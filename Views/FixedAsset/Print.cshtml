@@ -1,0 +1,161 @@
+﻿@model FixedAssetSystem.Models.FixedAssetRequest
+
+@{
+    Layout = null;
+    var existingUnits = Model.ExistingUnitDetails?.OrderBy(e => e.ItemNo).ToList();
+}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Fixed Asset Request - @Model.ControlNo</title>
+    <link rel="stylesheet" href="~/css/site.css" />
+</head>
+<body>
+    <div class="print-container">
+        <!-- HEADER -->
+        <div class="print-header">
+            <div class="print-title">FIXED ASSET REQUEST / MEMORANDUM RECEIPT</div>
+            <div>HRDA-F-2.10.6.1 Rev.4</div>
+            <div>Ctrl. No: @Model.ControlNo</div>
+        </div>
+
+        <!-- ========== PART 1 - ITEM DESCRIPTION (filled-up) ========== -->
+        <div class="section">
+            <div class="section-title">PART 1 - ITEM DESCRIPTION</div>
+            <table class="print-table">
+                <tr>
+                    <td style="width:150px">Date Requested:</td>
+                    <td>@Model.DateRequested.ToString("yyyy-MM-dd")</td>
+                    <td style="width:150px">Department:</td>
+                    <td>@Model.Department</td>
+                </tr>
+                <tr>
+                    <td>Target date needed:</td>
+                    <td>@Model.TargetDateNeeded.ToString("yyyy-MM-dd")</td>
+                    <td>Section:</td>
+                    <td>@Model.Section</td>
+                </tr>
+            </table>
+            <table class="print-table">
+                <tr>
+                    <th style="width:80px">Qty</th>
+                    <th>Detailed Description</th>
+                    <th>Reason/Purpose</th>
+                    <th>Proposed location</th>
+                </tr>
+                <tr>
+                    <td>@Model.Quantity</td>
+                    <td>@Model.DetailedDescription</td>
+                    <td>@Model.ReasonPurpose</td>
+                    <td>@Model.ProposedLocation</td>
+                </tr>
+            </table>
+            <table class="print-table">
+                <tr>
+                    <td>Estimated life span / usable period:</td>
+                    <td>@Model.EstimatedLifeSpan</td>
+                </tr>
+                <tr>
+                    <td>Request Type:</td>
+                    <td>@Model.RequestType</td>
+                </tr>
+                @if (!string.IsNullOrEmpty(Model.DamagedReportNo))
+                {
+                    <tr>
+                        <td>Damaged Report No:</td>
+                        <td>@Model.DamagedReportNo</td>
+                    </tr>
+                }
+            </table>
+            <div class="signature">
+                <table class="print-table">
+                    <tr>
+                        <td>Requested by (Initiator):</td>
+                        <td>@Model.RequestedByName</td>
+                        <td>Evaluated by (Head/Manager):</td>
+                        <td>@Model.EvaluatedByName</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- ========== EXISTING UNIT DETAILS (if Additional) ========== -->
+        @if (Model.RequestType == "Additional" && existingUnits != null && existingUnits.Any())
+        {
+            <div class="section">
+                <div class="section-title">EXISTING UNIT DETAILS</div>
+                <table class="print-table">
+                    <thead>
+                        <tr>
+                            <th>Item No.</th>
+                            <th>Description</th>
+                            <th>Location</th>
+                            <th>User</th>
+                            <th>Remarks (Condition)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var unit in existingUnits)
+                        {
+                            <tr>
+                                <td>@unit.ItemNo</td>
+                                <td>@unit.Description</td>
+                                <td>@unit.Location</td>
+                                <td>@unit.UserName</td>
+                                <td>@unit.Remarks</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        <!-- ========== PART 2 - REQUEST STATUS (blank for manual approval) ========== -->
+        <div class="section">
+            <div class="section-title">PART 2 - REQUEST STATUS (GAD-Purchasing) - To be filled by approvers</div>
+            <table class="print-table">
+                <tr><td style="width:200px">Received by / date:</td><td>_________________________ / __________</td><td></td><td></td></tr>
+                <tr><td>Cost (attach quotation reference):</td><td colspan="3">Quotation 1: _________________________ (P________)<br />Quotation 2: _________________________ (P________)</td></tr>
+                <tr><td>Remarks (Executive Office):</td><td colspan="3">_________________________________________________________________</td></tr>
+                <tr><td>Recommending approval (Executive Office):</td><td colspan="3">_________________________ (Signature / Date)</td></tr>
+                <tr><td>Vice President:</td><td colspan="3">_________________________ (Signature / Date)<br />Remarks: _________________</td></tr>
+                <tr><td>President:</td><td colspan="3">_________________________ (Signature / Date)<br />Remarks: _________________</td></tr>
+                <tr><td>Fixed Asset Code (by Finance):</td><td colspan="3">_________________________</td></tr>
+                <tr><td>Classification:</td><td colspan="3">▯ Asset &nbsp;&nbsp;&nbsp; ▯ Expense (Amortization ______ months)</td></tr>
+            </table>
+            <div style="margin-top: 10px;">
+                <strong>Finance by:</strong> _________________________ (Signature / Date)
+            </div>
+        </div>
+
+        <!-- ========== PART 3 - MEMORANDUM RECEIPT (blank for manual issuance) ========== -->
+        <div class="section">
+            <div class="section-title">PART 3 - MEMORANDUM RECEIPT (upon issuance of the item)</div>
+            <table class="print-table">
+                <tr><td style="width:200px">Fixed Asset code/Tag:</td><td>_________________________</td><td style="width:150px">Department / Section:</td><td>_________________________</td></tr>
+                <tr><td>PO Number / Date of Purchased:</td><td>_________________________ / __________</td><td>Please encircle:</td><td>New / Transfer</td></tr>
+                <tr><td>Item Description:</td><td colspan="3">__________________________________________________</td></tr>
+                <tr><td>Manufacturer:</td><td>_________________</td><td>Serial Number:</td><td>_________________</td></tr>
+                <tr><td>Model Number / Brand:</td><td colspan="3">_________________ / _________________</td></tr>
+            </table>
+            <div style="margin-top: 10px;">
+                <strong>I acknowledged receipt of the above listed items for which I am responsible and accountable:</strong><br /><br />
+                <table class="print-table">
+                    <tr><td style="width:50%">Received by: _________________________ (Name / Signature / Date)</td><td>Released by: _________________________ (Name / Signature / Date)</td></tr>
+                </table>
+            </div>
+            <div style="margin-top: 10px;">
+                cc: ☐ Purchasing &nbsp;&nbsp; ☐ Finance Department &nbsp;&nbsp; ☐ Requesting Department
+            </div>
+        </div>
+
+        <!-- BUTTONS (hidden when printing) -->
+        <div class="no-print">
+            <button onclick="window.print()" class="btn btn-primary">Print this form</button>
+            <button onclick="window.close()" class="btn btn-secondary">Close</button>
+        </div>
+    </div>
+</body>
+</html>

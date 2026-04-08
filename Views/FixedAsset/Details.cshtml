@@ -1,0 +1,65 @@
+﻿@model FixedAssetSystem.Models.FixedAssetRequest
+
+@{
+    ViewData["Title"] = "Request Details";
+}
+
+<h1>Fixed Asset Request Details</h1>
+
+<div class="card">
+    <div class="card-header">
+        <strong>@Model.ControlNo</strong> - @Model.RequestStatus
+    </div>
+    <div class="card-body">
+        <dl class="row">
+            <dt class="col-sm-3">Date Requested</dt>
+            <dd class="col-sm-9">@Model.DateRequested.ToString("yyyy-MM-dd")</dd>
+
+            <dt class="col-sm-3">Department</dt>
+            <dd class="col-sm-9">@Model.Department</dd>
+
+            <dt class="col-sm-3">Section</dt>
+            <dd class="col-sm-9">@Model.Section</dd>
+
+            <dt class="col-sm-3">Target Date Needed</dt>
+            <dd class="col-sm-9">@Model.TargetDateNeeded.ToString("yyyy-MM-dd")</dd>
+
+            <dt class="col-sm-3">Asset Type</dt>
+            <dd class="col-sm-9">@Model.AssetType</dd>
+
+            <dt class="col-sm-3">Quantity</dt>
+            <dd class="col-sm-9">@Model.Quantity</dd>
+
+            <dt class="col-sm-3">Detailed Description</dt>
+            <dd class="col-sm-9">@Model.DetailedDescription</dd>
+
+            <dt class="col-sm-3">Reason/Purpose</dt>
+            <dd class="col-sm-9">@Model.ReasonPurpose</dd>
+
+            <dt class="col-sm-3">Proposed Location</dt>
+            <dd class="col-sm-9">@Model.ProposedLocation</dd>
+
+            <dt class="col-sm-3">Estimated Life Span</dt>
+            <dd class="col-sm-9">@Model.EstimatedLifeSpan</dd>
+
+            <dt class="col-sm-3">Request Type</dt>
+            <dd class="col-sm-9">@Model.RequestType</dd>
+
+            @if (!string.IsNullOrEmpty(Model.DamagedReportNo))
+            {
+                <dt class="col-sm-3">Damaged Report No</dt>
+                <dd class="col-sm-9">@Model.DamagedReportNo</dd>
+            }
+
+            <dt class="col-sm-3">Requested By</dt>
+            <dd class="col-sm-9">@Model.RequestedByName</dd>
+
+            <dt class="col-sm-3">Evaluated By</dt>
+            <dd class="col-sm-9">@Model.EvaluatedByName</dd>
+        </dl>
+    </div>
+    <div class="card-footer">
+        <a asp-action="Print" asp-route-id="@Model.Id" class="btn btn-secondary" target="_blank">Print</a>
+        <a asp-action="Index" class="btn btn-primary">Back to List</a>
+    </div>
+</div>
