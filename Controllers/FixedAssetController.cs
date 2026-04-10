@@ -207,6 +207,23 @@ namespace FixedAssetSystem.Controllers
             var empId = HttpContext.Session.GetInt32("EmployeeId");
             if (empId == null) return RedirectToAction("Login", "Account");
 
+            // Set foreign key and name BEFORE validation
+            request.RequestedByEmployeeId = empId.Value;
+            request.RequestedByName = HttpContext.Session.GetString("EmployeeName");
+
+            // Manual parsing of TargetDateNeeded from string (because input is type="text")
+            var targetDateStr = Request.Form["TargetDateNeeded"].ToString();
+            if (!DateOnly.TryParseExact(targetDateStr, "yyyy-MM-dd", out var targetDate))
+            {
+                ModelState.AddModelError("TargetDateNeeded", "Invalid date format. Please use YYYY-MM-DD.");
+                return View(request);
+            }
+            request.TargetDateNeeded = targetDate;
+
+            // Remove validation for navigation properties (they are not needed for creation)
+            ModelState.Remove("RequestedByEmployee");
+            ModelState.Remove("EvaluatedByEmployee");
+
             if (ModelState.IsValid)
             {
                 // Set fixed fields (these do not change on retry)
@@ -216,6 +233,7 @@ namespace FixedAssetSystem.Controllers
                 request.UpdatedAt = DateTime.Now;
                 request.RequestStatus = "Draft";
                 request.RequestedAt = DateTime.Now;
+                request.DateRequested = DateOnly.FromDateTime(DateTime.Now);   // <-- ADD THIS
 
                 int maxRetries = 3;
                 for (int attempt = 1; attempt <= maxRetries; attempt++)

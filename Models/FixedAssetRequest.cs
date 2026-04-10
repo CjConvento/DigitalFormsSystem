@@ -71,5 +71,5 @@ public partial class FixedAssetRequest
 
     public virtual ICollection<RequestStatusHistory> RequestStatusHistories { get; set; } = new List<RequestStatusHistory>();
 
-    public virtual Employee RequestedByEmployee { get; set; } = null!;
+    public virtual Employee? RequestedByEmployee { get; set; }
 }

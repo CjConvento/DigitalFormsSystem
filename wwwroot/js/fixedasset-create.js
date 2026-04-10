@@ -21,7 +21,7 @@ $(document).ready(function () {
         if ($(this).val() === "Additional") {
             $("#existingUnitsSection").show();
             if ($("#existingUnitsTable tbody tr").length === 0) {
-                addRow(); // magdagdag ng isang default row
+                addRow();
             }
         } else {
             $("#existingUnitsSection").hide();
@@ -32,7 +32,6 @@ $(document).ready(function () {
 
     // Add row button
     $("#addUnitRow").click(function () {
-        // Siguraduhing ang huling row ay may laman ang Description bago magdagdag ng bago
         let lastRow = $("#existingUnitsTable tbody tr:last");
         let lastDesc = lastRow.find(".description").val();
         if (lastDesc && lastDesc.trim() !== "") {
@@ -45,14 +44,12 @@ $(document).ready(function () {
     // Remove row
     $(document).on("click", ".removeRow", function () {
         $(this).closest("tr").remove();
-        // Re-index rows (opsyonal: para maging maayos ang ItemNo)
         reindexRows();
     });
 
     function reindexRows() {
         $("#existingUnitsTable tbody tr").each(function (idx) {
             $(this).find(".item-no").val(idx + 1);
-            // I-update ang name attribute upang manatili ang tamang index sa server
             $(this).find(".item-no").attr("name", `ExistingUnits[${idx}].ItemNo`);
             $(this).find(".description").attr("name", `ExistingUnits[${idx}].Description`);
             $(this).find(".location").attr("name", `ExistingUnits[${idx}].Location`);
@@ -62,7 +59,7 @@ $(document).ready(function () {
         rowIndex = $("#existingUnitsTable tbody tr").length;
     }
 
-    // Bago mag-submit ng form, i-validate ang lahat ng existing units rows
+    // Form submit handler (existing validation only)
     $("form").submit(function (e) {
         if ($("#RequestType").val() === "Additional") {
             let isValid = true;
@@ -78,6 +75,7 @@ $(document).ready(function () {
             if (!isValid) {
                 e.preventDefault();
                 alert("Please fill in the Description for all existing unit rows. Remove any empty rows.");
+                return false;
             }
         }
     });
