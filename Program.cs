@@ -1,42 +1,45 @@
 using FixedAssetSystem.Models;
 using Microsoft.EntityFrameworkCore;
 
-var builder = WebApplication.CreateBuilder(args);
-
-builder.Services.AddControllersWithViews();
-builder.Services.AddDbContext<FixedAssetSystemContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
-
-// ========== IDAGDAG ITO ==========
-builder.Services.AddDistributedMemoryCache();
-builder.Services.AddSession(options =>
+try
 {
-    options.IdleTimeout = TimeSpan.FromMinutes(30);
-    options.Cookie.HttpOnly = true;
-    options.Cookie.IsEssential = true;
-});
-// ================================
+    var builder = WebApplication.CreateBuilder(args);
 
-var app = builder.Build();
+    builder.Services.AddControllersWithViews();
+    builder.Services.AddDbContext<FixedAssetSystemContext>(options =>
+        options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-if (!app.Environment.IsDevelopment())
-{
-    app.UseExceptionHandler("/Home/Error");
-    app.UseHsts();
+    builder.Services.AddDistributedMemoryCache();
+    builder.Services.AddSession(options =>
+    {
+        options.IdleTimeout = TimeSpan.FromMinutes(30);
+        options.Cookie.HttpOnly = true;
+        options.Cookie.IsEssential = true;
+    });
+
+    var app = builder.Build();
+
+    if (!app.Environment.IsDevelopment())
+    {
+        app.UseExceptionHandler("/Home/Error");
+        app.UseHsts();
+    }
+
+    app.UseHttpsRedirection();
+    app.UseStaticFiles();
+    app.UseRouting();
+    app.UseSession();
+    app.UseAuthorization();
+
+    app.MapControllerRoute(
+        name: "default",
+        pattern: "{controller=FixedAsset}/{action=Index}/{id?}");
+
+    app.Run();
 }
-
-app.UseHttpsRedirection();
-app.UseStaticFiles();
-app.UseRouting();
-
-// ========== IDAGDAG ITO (dapat nasa pagitan ng UseRouting at UseAuthorization) ==========
-app.UseSession();
-// =====================================================================================
-
-app.UseAuthorization();
-
-app.MapControllerRoute(
-    name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}");
-
-app.Run();
+catch (Exception ex)
+{
+    Console.WriteLine("===== FATAL EXCEPTION =====");
+    Console.WriteLine(ex.ToString());
+    throw;
+}

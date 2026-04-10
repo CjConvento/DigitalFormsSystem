@@ -15,19 +15,19 @@
 <body>
     <div class="print-container">
         <!-- HEADER -->
-        <div class="print-header">
-            <div class="print-title">FIXED ASSET REQUEST / MEMORANDUM RECEIPT</div>
-            <div>HRDA-F-2.10.6.1 Rev.4</div>
+        <div class="header">
+            <div class="title">FIXED ASSET REQUEST / MEMORANDUM RECEIPT</div>
+            <div class="rev">HRDA-F-2.10.6.1 Rev.4</div>
             <div>Ctrl. No: @Model.ControlNo</div>
         </div>
 
-        <!-- ========== PART 1 - ITEM DESCRIPTION (filled-up) ========== -->
+        <!-- PART 1 - ITEM DESCRIPTION -->
         <div class="section">
-            <div class="section-title">PART 1 - ITEM DESCRIPTION</div>
+            <div class="section-title">PART 1 -- ITEM DESCRIPTION <span style="font-size:10pt;">(to be filled up by requesting department)</span></div>
             <table class="print-table">
                 <tr>
                     <td style="width:150px">Date Requested:</td>
-                    <td>@Model.DateRequested.ToString("yyyy-MM-dd")</td>
+                    <td style="width:250px">@Model.DateRequested.ToString("yyyy-MM-dd")</td>
                     <td style="width:150px">Department:</td>
                     <td>@Model.Department</td>
                 </tr>
@@ -38,50 +38,61 @@
                     <td>@Model.Section</td>
                 </tr>
             </table>
+
             <table class="print-table">
-                <tr>
-                    <th style="width:80px">Qty</th>
-                    <th>Detailed Description</th>
-                    <th>Reason/Purpose</th>
-                    <th>Proposed location</th>
-                </tr>
-                <tr>
-                    <td>@Model.Quantity</td>
-                    <td>@Model.DetailedDescription</td>
-                    <td>@Model.ReasonPurpose</td>
-                    <td>@Model.ProposedLocation</td>
-                </tr>
+                <thead>
+                    <tr>
+                        <th style="width:60px">Qty</th>
+                        <th>Detailed Description</th>
+                        <th>Reason/Purpose</th>
+                        <th style="width:150px">Proposed location</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>@Model.Quantity</td>
+                        <td>@Model.DetailedDescription</td>
+                        <td>@Model.ReasonPurpose</td>
+                        <td>@Model.ProposedLocation</td>
+                    </tr>
+                </tbody>
             </table>
+
             <table class="print-table">
                 <tr>
-                    <td>Estimated life span / usable period:</td>
+                    <td style="width:180px">Estimated life span / usable period:</td>
                     <td>@Model.EstimatedLifeSpan</td>
-                </tr>
-                <tr>
-                    <td>Request Type:</td>
+                    <td style="width:180px">Request Type:</td>
                     <td>@Model.RequestType</td>
                 </tr>
-                @if (!string.IsNullOrEmpty(Model.DamagedReportNo))
-                {
-                    <tr>
-                        <td>Damaged Report No:</td>
-                        <td>@Model.DamagedReportNo</td>
-                    </tr>
-                }
+                <tr>
+                    <td colspan="4">
+                        <strong>Requested by (Initiator):</strong> @Model.RequestedByName &nbsp;&nbsp;&nbsp;
+                        <strong>Evaluated by (Head/Manager):</strong> @Model.EvaluatedByName
+                    </td>
+                </tr>
             </table>
-            <div class="signature">
-                <table class="print-table">
-                    <tr>
-                        <td>Requested by (Initiator):</td>
-                        <td>@Model.RequestedByName</td>
-                        <td>Evaluated by (Head/Manager):</td>
-                        <td>@Model.EvaluatedByName</td>
-                    </tr>
-                </table>
+
+            <!-- DYNAMIC CHECKBOXES -->
+            <div style="margin-top:5px;">
+                <strong>Please check:</strong><br />
+                <label>
+                    <input type="checkbox" class="request-checkbox" value="New" /> New unit (First order/no existing unit)
+                </label><br />
+                <label>
+                    <input type="checkbox" class="request-checkbox" value="Additional" /> Additional (how many existing units and user) – <em>fill up data at the back of this form</em>
+                </label><br />
+                <label>
+                    <input type="checkbox" class="request-checkbox" value="Replacement" /> Replacement (attached damaged report) – Damaged Report no. _____________
+                </label>
+            </div>
+
+            <div style="font-size:10pt; margin-top:5px;">
+                <em>Instructions: 1. Applicable for one (1) item only. 2. Initiator must fill-up Part 1 and submit to GAD-Purchasing Section together with the Purchase Request. ...</em>
             </div>
         </div>
 
-        <!-- ========== EXISTING UNIT DETAILS (if Additional) ========== -->
+        <!-- EXISTING UNIT DETAILS (for Additional requests) -->
         @if (Model.RequestType == "Additional" && existingUnits != null && existingUnits.Any())
         {
             <div class="section">
@@ -89,11 +100,11 @@
                 <table class="print-table">
                     <thead>
                         <tr>
-                            <th>Item No.</th>
-                            <th>Description</th>
-                            <th>Location</th>
-                            <th>User</th>
-                            <th>Remarks (Condition)</th>
+                            <th>ITEM NO.</th>
+                            <th>DESCRIPTION</th>
+                            <th>LOCATION</th>
+                            <th>USER</th>
+                            <th>REMARKS (Condition of the Item)</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -112,50 +123,115 @@
             </div>
         }
 
-        <!-- ========== PART 2 - REQUEST STATUS (blank for manual approval) ========== -->
+        <!-- PART 2 - REQUEST STATUS (fully table‑based) -->
         <div class="section">
-            <div class="section-title">PART 2 - REQUEST STATUS (GAD-Purchasing) - To be filled by approvers</div>
+            <div class="section-title">PART 2. REQUEST STATUS <span style="font-size:10pt;">(to be processed by GAD-Purchasing)</span></div>
             <table class="print-table">
-                <tr><td style="width:200px">Received by / date:</td><td>_________________________ / __________</td><td></td><td></td></tr>
-                <tr><td>Cost (attach quotation reference):</td><td colspan="3">Quotation 1: _________________________ (P________)<br />Quotation 2: _________________________ (P________)</td></tr>
-                <tr><td>Remarks (Executive Office):</td><td colspan="3">_________________________________________________________________</td></tr>
-                <tr><td>Recommending approval (Executive Office):</td><td colspan="3">_________________________ (Signature / Date)</td></tr>
-                <tr><td>Vice President:</td><td colspan="3">_________________________ (Signature / Date)<br />Remarks: _________________</td></tr>
-                <tr><td>President:</td><td colspan="3">_________________________ (Signature / Date)<br />Remarks: _________________</td></tr>
-                <tr><td>Fixed Asset Code (by Finance):</td><td colspan="3">_________________________</td></tr>
-                <tr><td>Classification:</td><td colspan="3">▯ Asset &nbsp;&nbsp;&nbsp; ▯ Expense (Amortization ______ months)</td></tr>
+                <tr>
+                    <td style="width:180px">Received by / date:</td>
+                    <td>_________________________ / __________</td>
+                    <td style="width:180px">Cost (attached quotation reference):</td>
+                    <td>Quotation 1: _________________________ (P________)<br />Quotation 2: _________________________ (P________)</td>
+                </tr>
+                <tr>
+                    <td>By:</td>
+                    <td colspan="3">_________________________</td>
+                </tr>
             </table>
-            <div style="margin-top: 10px;">
-                <strong>Finance by:</strong> _________________________ (Signature / Date)
-            </div>
+
+            <table class="print-table">
+                <tr>
+                    <td style="width:200px"><strong>To be evaluated by : Executive Office</strong></td>
+                    <td colspan="3">Remarks: _________________________________________________________________</td>
+                </tr>
+                <tr>
+                    <td>Recommending approval (Executive Office):</td>
+                    <td colspan="3">_________________________ (Signature / Date)</td>
+                </tr>
+                <tr>
+                    <td>Remarks:</td>
+                    <td colspan="3">_________________________________________________________________</td>
+                </tr>
+            </table>
+
+            <table class="print-table">
+                <tr>
+                    <td style="width:200px"><strong>Vice President</strong></td>
+                    <td>_________________________ (Signature / Date)<br />Remarks: _________________</td>
+                    <td style="width:200px"><strong>President</strong></td>
+                    <td>_________________________ (Signature / Date)<br />Remarks: _________________</td>
+                </tr>
+            </table>
+
+            <table class="print-table">
+                <tr>
+                    <td style="width:200px"><strong>Fixed Asset Code -- by Finance :</strong></td>
+                    <td colspan="3">_________________________</td>
+                </tr>
+                <tr>
+                    <td>▯ Asset &nbsp;&nbsp;&nbsp; ▯ Expense (Amortization ______ months)</td>
+                    <td colspan="3">by: _________________________</td>
+                </tr>
+            </table>
         </div>
 
-        <!-- ========== PART 3 - MEMORANDUM RECEIPT (blank for manual issuance) ========== -->
+        <!-- PART 3 - MEMORANDUM RECEIPT (fully table‑based) -->
         <div class="section">
-            <div class="section-title">PART 3 - MEMORANDUM RECEIPT (upon issuance of the item)</div>
+            <div class="section-title">PART 3 -- MEMORANDUM RECEIPT <span style="font-size:10pt;">(upon issuance of the item) (applicable also for transferred item from F1 or F2)</span></div>
             <table class="print-table">
-                <tr><td style="width:200px">Fixed Asset code/Tag:</td><td>_________________________</td><td style="width:150px">Department / Section:</td><td>_________________________</td></tr>
-                <tr><td>PO Number / Date of Purchased:</td><td>_________________________ / __________</td><td>Please encircle:</td><td>New / Transfer</td></tr>
-                <tr><td>Item Description:</td><td colspan="3">__________________________________________________</td></tr>
-                <tr><td>Manufacturer:</td><td>_________________</td><td>Serial Number:</td><td>_________________</td></tr>
-                <tr><td>Model Number / Brand:</td><td colspan="3">_________________ / _________________</td></tr>
+                <tr>
+                    <td style="width:180px">Fixed Asset code/Tag:</td>
+                    <td>_________________________</td>
+                    <td style="width:150px">Department / Section:</td>
+                    <td>_________________________</td>
+                </tr>
+                <tr>
+                    <td>PO Number / Date of Purchased:</td>
+                    <td>_________________________ / __________</td>
+                    <td>Please encircle :</td>
+                    <td>New / Transfer</td>
+                </tr>
+                <tr>
+                    <td>Item Description:</td>
+                    <td colspan="3">__________________________________________________</td>
+                </tr>
+                <tr>
+                    <td>Manufacturer:</td>
+                    <td>_________________</td>
+                    <td>Serial Number:</td>
+                    <td>_________________</td>
+                </tr>
+                <tr>
+                    <td>Model Number / Brand:</td>
+                    <td colspan="3">_________________ / _________________</td>
+                </tr>
             </table>
-            <div style="margin-top: 10px;">
-                <strong>I acknowledged receipt of the above listed items for which I am responsible and accountable:</strong><br /><br />
-                <table class="print-table">
-                    <tr><td style="width:50%">Received by: _________________________ (Name / Signature / Date)</td><td>Released by: _________________________ (Name / Signature / Date)</td></tr>
-                </table>
-            </div>
-            <div style="margin-top: 10px;">
-                cc: ☐ Purchasing &nbsp;&nbsp; ☐ Finance Department &nbsp;&nbsp; ☐ Requesting Department
-            </div>
+
+            <table class="print-table">
+                <tr>
+                    <td colspan="2"><em>I acknowledged receipt of the above listed items for which I am responsible and accountable:</em></td>
+                </tr>
+                <tr>
+                    <td style="width:50%">Received by: _________________________ (Name / Signature / Date)</td>
+                    <td style="width:50%">Released by: _________________________ (Name / Signature / Date)</td>
+                </tr>
+            </table>
+
+            <table class="print-table">
+                <tr>
+                    <td>cc : ○ Purchasing ○ Finance Department ○ Requesting Department.</td>
+                </tr>
+            </table>
         </div>
 
-        <!-- BUTTONS (hidden when printing) -->
-        <div class="no-print">
+        <!-- Print buttons (hidden when printing) -->
+        <div class="no-print" style="margin-top:20px; text-align:center;">
             <button onclick="window.print()" class="btn btn-primary">Print this form</button>
             <button onclick="window.close()" class="btn btn-secondary">Close</button>
         </div>
     </div>
+
+    <div id="requestTypeData" data-request-type="@Model.RequestType" style="display:none;"></div>
+    <script src="/js/print.js"></script>
 </body>
 </html>
