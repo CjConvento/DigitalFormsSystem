@@ -104,6 +104,7 @@
         <!-- EXISTING UNIT DETAILS (if Additional) -->
         @if (Model.RequestType == "Additional" && existingUnits != null && existingUnits.Any())
         {
+        <div class="existing-units-back">
             <div class="section">
                 <div class="section-title">EXISTING UNIT DETAILS</div>
                 <table class="print-table">
@@ -130,10 +131,12 @@
                     </tbody>
                 </table>
             </div>
+        </div>
         }
 
-        <!-- PART 2 (forced page break) -->
-        <div class="section force-page-break">
+
+        <!-- PART 2 -->
+        <div class="section">
             <div class="section-title">PART 2. REQUEST STATUS <span class="small">(to be processed by GAD-Purchasing)</span></div>
             <table class="print-table">
                 <tr>

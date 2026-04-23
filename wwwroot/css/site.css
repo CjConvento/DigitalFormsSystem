@@ -139,10 +139,22 @@ body {
         margin: 0;
         padding: 0;
     }
+
+    /* Remove any existing page break before Part 2 */
+    .force-page-break {
+        page-break-before: auto !important;
+    }
+
+    /* Ensure existing unit details start on a new page (back side) */
+    .existing-units-back {
+        page-break-before: always;
+    }
+
     /* Make tables shrink and wrap */
     .print-table {
         width: 100%;
         table-layout: auto;
+        border-collapse: collapse;
     }
 
         .print-table td, .print-table th {
@@ -153,6 +165,7 @@ body {
             word-break: break-word;
             white-space: normal;
         }
+
         /* Prevent page breaks inside rows */
         tr, td, th, .print-table tbody, .print-table tr {
             page-break-inside: avoid;
@@ -162,10 +175,8 @@ body {
     .section {
         page-break-after: auto;
         page-break-inside: avoid;
-    }
-
-    .force-page-break {
-        page-break-before: always;
+        margin-bottom: 6px;
+        padding: 4px;
     }
 
     .no-print {
