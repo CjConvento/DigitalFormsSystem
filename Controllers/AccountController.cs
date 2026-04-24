@@ -1,14 +1,14 @@
-﻿using FixedAssetSystem.Models;
+﻿using DigitalFormsSystem.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
-namespace FixedAssetSystem.Controllers
+namespace DigitalFormsSystem.Controllers
 {
     public class AccountController : Controller
     {
-        private readonly FixedAssetSystemContext _context;
+        private readonly DigitalFormsSystemContext _context;
 
-        public AccountController(FixedAssetSystemContext context)
+        public AccountController(DigitalFormsSystemContext context)
         {
             _context = context;
         }

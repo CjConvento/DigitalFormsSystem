@@ -1,4 +1,4 @@
-using FixedAssetSystem.Models;
+using DigitalFormsSystem.Models;
 using System.Threading;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,7 +10,7 @@ try
     var builder = WebApplication.CreateBuilder(args);
 
     builder.Services.AddControllersWithViews();
-    builder.Services.AddDbContext<FixedAssetSystemContext>(options =>
+    builder.Services.AddDbContext<DigitalFormsSystemContext>(options =>
         options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
     builder.Services.AddDistributedMemoryCache();

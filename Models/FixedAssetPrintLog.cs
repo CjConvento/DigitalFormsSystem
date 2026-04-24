@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace FixedAssetSystem.Models;
+namespace DigitalFormsSystem.Models;
 
 public partial class FixedAssetPrintLog
 {

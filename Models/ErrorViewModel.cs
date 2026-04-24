@@ -1,4 +1,4 @@
-namespace FixedAssetSystem.Models
+namespace DigitalFormsSystem.Models
 {
     public class ErrorViewModel
     {

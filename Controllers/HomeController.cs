@@ -1,8 +1,8 @@
 using System.Diagnostics;
-using FixedAssetSystem.Models;
+using DigitalFormsSystem.Models;
 using Microsoft.AspNetCore.Mvc;
 
-namespace FixedAssetSystem.Controllers
+namespace DigitalFormsSystem.Controllers
 {
     public class HomeController : Controller
     {

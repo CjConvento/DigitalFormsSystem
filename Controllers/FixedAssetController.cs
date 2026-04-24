@@ -1,16 +1,16 @@
-﻿using FixedAssetSystem.Models;
+﻿using DigitalFormsSystem.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 
-namespace FixedAssetSystem.Controllers
+namespace DigitalFormsSystem.Controllers
 {
     public class FixedAssetController : Controller
     {
-        private readonly FixedAssetSystemContext _context;
+        private readonly DigitalFormsSystemContext _context;
 
-        public FixedAssetController(FixedAssetSystemContext context)
+        public FixedAssetController(DigitalFormsSystemContext context)
         {
             _context = context;
         }

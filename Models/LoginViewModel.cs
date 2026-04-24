@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace FixedAssetSystem.Models
+namespace DigitalFormsSystem.Models
 {
     public class LoginViewModel
     {

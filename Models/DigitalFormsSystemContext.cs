@@ -1,21 +1,24 @@
 ﻿using System;
 using System.Collections.Generic;
+using DigitalFormsSystem.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace FixedAssetSystem.Models;
+namespace DigitalFormsSystem.Models;
 
-public partial class FixedAssetSystemContext : DbContext
+public partial class DigitalFormsSystemContext : DbContext
 {
-    public FixedAssetSystemContext()
+    public DigitalFormsSystemContext()
     {
     }
 
-    public FixedAssetSystemContext(DbContextOptions<FixedAssetSystemContext> options)
+    public DigitalFormsSystemContext(DbContextOptions<DigitalFormsSystemContext> options)
         : base(options)
     {
     }
 
     public virtual DbSet<AssetType> AssetTypes { get; set; }
+
+    public virtual DbSet<DamagedReport> DamagedReports { get; set; }
 
     public virtual DbSet<Employee> Employees { get; set; }
 
