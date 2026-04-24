@@ -1,11 +1,6 @@
 ﻿@{
     ViewData["Title"] = "Dashboard";
-    var userName = Context.Session.GetString("EmployeeName");
 }
-
-<div style="text-align: right; margin-bottom: 20px;">
-    Welcome, @userName! | <a asp-action="Logout" asp-controller="Account">Logout</a>
-</div>
 
 <h1 class="text-center">Digital Forms System</h1>
 <h4 class="text-center text-muted">Select a form to create or manage</h4>
