@@ -41,7 +41,7 @@ namespace DigitalFormsSystem.Controllers
                     HttpContext.Session.SetString("EmployeeName", employee.Name);
                     HttpContext.Session.SetString("EmployeeNo", employee.EmployeeNo);
 
-                    return RedirectToAction("Index", "FixedAsset");
+                    return RedirectToAction("Index", "Home");
                 }
                 else
                 {

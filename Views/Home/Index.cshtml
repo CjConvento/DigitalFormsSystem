@@ -1,8 +1,32 @@
 ﻿@{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "Dashboard";
+    var userName = Context.Session.GetString("EmployeeName");
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div style="text-align: right; margin-bottom: 20px;">
+    Welcome, @userName! | <a asp-action="Logout" asp-controller="Account">Logout</a>
+</div>
+
+<h1 class="text-center">Digital Forms System</h1>
+<h4 class="text-center text-muted">Select a form to create or manage</h4>
+
+<div class="row mt-5">
+    <div class="col-md-6">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title">Fixed Asset Request</h5>
+                <p class="card-text">Request new, additional, or replacement fixed assets.</p>
+                <a asp-controller="FixedAsset" asp-action="Index" class="btn btn-primary">Go to Fixed Asset Requests</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title">Damaged Report</h5>
+                <p class="card-text">Report damaged equipment, assets, or tools.</p>
+                <a asp-controller="DamagedReport" asp-action="Index" class="btn btn-primary">Go to Damaged Reports</a>
+            </div>
+        </div>
+    </div>
 </div>
