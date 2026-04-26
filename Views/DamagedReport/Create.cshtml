@@ -1,5 +1,115 @@
-﻿@{
+﻿@model DigitalFormsSystem.Models.DamagedReport
+@{
     ViewData["Title"] = "Create Damaged Report";
+    var employees = ViewBag.Employees as SelectList;
 }
+
 <h1>Create Damaged Report</h1>
-<p>Form coming soon...</p>
+
+<form asp-action="Create" method="post" enctype="multipart/form-data">
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    <!-- PART I – ITEM DESCRIPTION -->
+    <div class="section" style="border:1px solid #ccc; padding:10px; margin-bottom:20px;">
+        <h4>PART I – ITEM DESCRIPTION</h4>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label asp-for="Item" class="control-label"></label>
+                    <input asp-for="Item" class="form-control" required />
+                </div>
+                <div class="form-group">
+                    <label asp-for="FixedAssetCode" class="control-label"></label>
+                    <input asp-for="FixedAssetCode" class="form-control" />
+                </div>
+                <div class="form-group">
+                    <label asp-for="DatePurchased" class="control-label"></label>
+                    <input asp-for="DatePurchased" class="form-control" type="date" />
+                </div>
+                <div class="form-group">
+                    <label asp-for="BrandSize" class="control-label"></label>
+                    <input asp-for="BrandSize" class="form-control" />
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label asp-for="LocationUser" class="control-label"></label>
+                    <input asp-for="LocationUser" class="form-control" />
+                </div>
+                <div class="form-group">
+                    <label asp-for="SerialNumber" class="control-label"></label>
+                    <input asp-for="SerialNumber" class="form-control" />
+                </div>
+                <div class="form-group">
+                    <label asp-for="Color" class="control-label"></label>
+                    <input asp-for="Color" class="form-control" />
+                </div>
+                <div class="form-group">
+                    <label>Attach Item Picture(s) (optional)</label>
+                    <input type="file" name="partIimages" multiple accept="image/*" class="form-control-file" />
+                    <small class="form-text text-muted">You can select multiple images of the asset.</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PART II – INCIDENT REPORT -->
+    <div class="section" style="border:1px solid #ccc; padding:10px; margin-bottom:20px;">
+        <h4>PART II – INCIDENT REPORT</h4>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label asp-for="IncidentDateTime" class="control-label"></label>
+                    <input asp-for="IncidentDateTime" class="form-control" type="datetime-local" />
+                </div>
+                <div class="form-group">
+                    <label asp-for="CauseOfDamage" class="control-label"></label>
+                    <textarea asp-for="CauseOfDamage" class="form-control" rows="3"></textarea>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label asp-for="ImmediateAction" class="control-label"></label>
+                    <textarea asp-for="ImmediateAction" class="form-control" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label asp-for="RecommendedAction" class="control-label"></label>
+                    <select asp-for="RecommendedAction" class="form-control">
+                        <option value="">-- Select --</option>
+                        <option value="1">Internal Repair</option>
+                        <option value="2">External Repair</option>
+                        <option value="3">Parts for Replacement</option>
+                        <option value="4">Disposal</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label asp-for="ReceivedByEmployeeId" class="control-label">Received by (optional)</label>
+                    <select asp-for="ReceivedByEmployeeId" class="form-control" asp-items="employees">
+                        <option value="">-- Select --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label asp-for="ReceivedDateTime" class="control-label">Received date/time</label>
+                    <input asp-for="ReceivedDateTime" class="form-control" type="datetime-local" />
+                </div>
+
+                <!-- Inside the PART II section, before closing the row or after the text fields -->
+                <div class="form-group">
+                    <label>Attach Incident Picture(s) (optional)</label>
+                    <input type="file" name="partIIimages" multiple accept="image/*" class="form-control-file" />
+                    <small class="form-text text-muted">Photos of the incident, damage, or scene.</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-group mt-3">
+        <input type="submit" value="Submit Report" class="btn btn-primary" />
+        <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+    </div>
+</form>
+
+@section Scripts {
+    <script src="~/lib/jquery-validation/dist/jquery.validate.min.js"></script>
+    <script src="~/lib/jquery-validation-unobtrusive/jquery.validate.unobtrusive.min.js"></script>
+}

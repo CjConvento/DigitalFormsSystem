@@ -1,5 +1,31 @@
-﻿@{
+﻿@model DigitalFormsSystem.Models.DamagedReport
+
+@{
     ViewData["Title"] = "Delete Damaged Report";
 }
+
 <h1>Delete Damaged Report</h1>
-<p>Delete confirmation coming soon...</p>
+<div class="alert alert-danger">
+    <h3>Are you sure you want to delete this report?</h3>
+    <p>This action cannot be undone.</p>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <strong>@Model.ControlNo</strong> - @Model.RequestStatus
+    </div>
+    <div class="card-body">
+        <dl class="row">
+            <dt class="col-sm-3">Item</dt>
+            <dd class="col-sm-9">@Model.Item</dd>
+            <dt class="col-sm-3">Reported By</dt>
+            <dd class="col-sm-9">@(Model.ReportedByEmployee?.Name)</dd>
+        </dl>
+    </div>
+    <div class="card-footer">
+        <form asp-action="DeleteConfirmed" asp-route-id="@Model.Id" method="post">
+            <input type="submit" value="Delete Permanently" class="btn btn-danger" />
+            <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+        </form>
+    </div>
+</div>

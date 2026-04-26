@@ -30,7 +30,7 @@ namespace DigitalFormsSystem.Controllers
 
                 if (employee != null)
                 {
-                    // Hardcoded password (kung gusto mo)
+                    // password
                     if (model.Password != "hstpass")
                     {
                         ModelState.AddModelError("", "Invalid password.");
@@ -40,6 +40,8 @@ namespace DigitalFormsSystem.Controllers
                     HttpContext.Session.SetInt32("EmployeeId", employee.Id);
                     HttpContext.Session.SetString("EmployeeName", employee.Name);
                     HttpContext.Session.SetString("EmployeeNo", employee.EmployeeNo);
+                    // ADD THIS LINE:
+                    HttpContext.Session.SetString("EmployeeDepartment", employee.Department ?? "");
 
                     return RedirectToAction("Index", "Home");
                 }

@@ -1,5 +1,99 @@
-﻿@{
+﻿@model DigitalFormsSystem.Models.DamagedReport
+
+@{
     ViewData["Title"] = "Damaged Report Details";
 }
+
 <h1>Damaged Report Details</h1>
-<p>Details coming soon...</p>
+<div class="card">
+    <div class="card-header">
+        <strong>@Model.ControlNo</strong> - @Model.RequestStatus
+    </div>
+    <div class="card-body">
+        <dl class="row">
+            <dt class="col-sm-3">Item</dt>
+            <dd class="col-sm-9">@Model.Item</dd>
+            <dt class="col-sm-3">Fixed Asset Code</dt>
+            <dd class="col-sm-9">@Model.FixedAssetCode</dd>
+            <dt class="col-sm-3">Date Purchased</dt>
+            <dd class="col-sm-9">@(Model.DatePurchased?.ToString("yyyy-MM-dd"))</dd>
+            <dt class="col-sm-3">Brand / Size</dt>
+            <dd class="col-sm-9">@Model.BrandSize</dd>
+            <dt class="col-sm-3">Location / User</dt>
+            <dd class="col-sm-9">@Model.LocationUser</dd>
+            <dt class="col-sm-3">Serial Number</dt>
+            <dd class="col-sm-9">@Model.SerialNumber</dd>
+            <dt class="col-sm-3">Color</dt>
+            <dd class="col-sm-9">@Model.Color</dd>
+            <dt class="col-sm-3">Incident Date/Time</dt>
+            <dd class="col-sm-9">@(Model.IncidentDateTime?.ToString("yyyy-MM-dd HH:mm"))</dd>
+            <dt class="col-sm-3">Cause of Damage</dt>
+            <dd class="col-sm-9">@Model.CauseOfDamage</dd>
+            <dt class="col-sm-3">Immediate Action</dt>
+            <dd class="col-sm-9">@Model.ImmediateAction</dd>
+            <dt class="col-sm-3">Recommended Action</dt>
+            <dd class="col-sm-9">
+                @{
+                    switch (Model.RecommendedAction)
+                    {
+                        case 1:
+                            @:Internal Repair
+                            break;
+                        case 2:
+                            @:External Repair
+                            break;
+                        case 3:
+                            @:Parts for Replacement
+                            break;
+                        case 4:
+                            @:Disposal
+                            break;
+                        default:
+                            @:Not specified
+                            break;
+                    }
+                }
+            </dd>
+            <dt class="col-sm-3">Reported By</dt>
+            <dd class="col-sm-9">@(Model.ReportedByEmployee?.Name)</dd>
+            <dt class="col-sm-3">Received By</dt>
+            <dd class="col-sm-9">@(Model.ReceivedByEmployee?.Name)</dd>
+            <dt class="col-sm-3">Received Date/Time</dt>
+            <dd class="col-sm-9">@(Model.ReceivedDateTime?.ToString("yyyy-MM-dd HH:mm"))</dd>
+        </dl>
+
+        <!-- Part I images gallery -->
+        @if (Model.Images != null && Model.Images.Any(i => i.Section == "PartI"))
+        {
+            <h4>Attached Pictures (Item)</h4>
+            <div class="row">
+                @foreach (var img in Model.Images.Where(i => i.Section == "PartI"))
+                {
+                    <div class="col-md-3">
+                        <img src="@img.FilePath" class="img-thumbnail" style="max-height:150px;" />
+                        <div>@img.FileName</div>
+                    </div>
+                }
+            </div>
+        }
+
+        <!-- Part II images gallery -->
+        @if (Model.Images != null && Model.Images.Any(i => i.Section == "PartII"))
+        {
+            <h4>Incident Pictures</h4>
+            <div class="row">
+                @foreach (var img in Model.Images.Where(i => i.Section == "PartII"))
+                {
+                    <div class="col-md-3 mb-2">
+                        <img src="@img.FilePath" class="img-thumbnail" style="max-height:150px;" />
+                        <div>@img.FileName</div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+    <div class="card-footer">
+        <a asp-action="Print" asp-route-id="@Model.Id" class="btn btn-secondary" target="_blank">Print</a>
+        <a asp-action="Index" class="btn btn-primary">Back to List</a>
+    </div>
+</div>

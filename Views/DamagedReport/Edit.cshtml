@@ -1,5 +1,170 @@
-﻿@{
+﻿@model DigitalFormsSystem.Models.DamagedReport
+@{
     ViewData["Title"] = "Edit Damaged Report";
+    var employees = ViewBag.Employees as SelectList;
 }
+
 <h1>Edit Damaged Report</h1>
-<p>Edit form coming soon...</p>
+
+<form asp-action="Edit" method="post" enctype="multipart/form-data">
+    <input type="hidden" asp-for="Id" />
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    @if (ViewData.ModelState.ContainsKey("partIimages") || ViewData.ModelState.ContainsKey("partIIimages"))
+    {
+        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+            <strong>Image upload problem:</strong> One or more of the selected images are invalid (wrong type, too large). Please check and re-upload.
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <!-- same fields as Create.cshtml, exactly as above -->
+    <div class="section" style="border:1px solid #ccc; padding:10px; margin-bottom:20px;">
+        <h4>PART I – ITEM DESCRIPTION</h4>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label asp-for="Item" class="control-label"></label>
+                    <input asp-for="Item" class="form-control" required />
+                </div>
+                <div class="form-group">
+                    <label asp-for="FixedAssetCode" class="control-label"></label>
+                    <input asp-for="FixedAssetCode" class="form-control" />
+                </div>
+                <div class="form-group">
+                    <label asp-for="DatePurchased" class="control-label"></label>
+                    <input asp-for="DatePurchased" class="form-control" type="date" />
+                </div>
+                <div class="form-group">
+                    <label asp-for="BrandSize" class="control-label"></label>
+                    <input asp-for="BrandSize" class="form-control" />
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label asp-for="LocationUser" class="control-label"></label>
+                    <input asp-for="LocationUser" class="form-control" />
+                </div>
+                <div class="form-group">
+                    <label asp-for="SerialNumber" class="control-label"></label>
+                    <input asp-for="SerialNumber" class="form-control" />
+                </div>
+                <div class="form-group">
+                    <label asp-for="Color" class="control-label"></label>
+                    <input asp-for="Color" class="form-control" />
+                </div>
+
+                <div class="form-group">
+                    <label>Add more Item Picture(s) (optional)</label>
+                    <input type="file" name="partIimages" multiple accept="image/*" class="form-control-file" />
+                    @Html.ValidationMessage("partIimages", new { @class = "text-danger" })
+                    <small class="form-text text-muted">You can select additional images of the asset.</small>
+                </div>
+                @if (Model.Images != null && Model.Images.Any(i => i.Section == "PartI"))
+                {
+                    <div class="mt-3">
+                        <label>Current Item Pictures:</label>
+                        <div class="row">
+                            @foreach (var img in Model.Images.Where(i => i.Section == "PartI"))
+                            {
+                                <div class="col-md-3 mb-2">
+                                    <div class="card">
+                                        <img src="@img.FilePath" class="card-img-top" style="max-height:120px; object-fit:cover;" />
+                                        <div class="card-body p-1 text-center">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="deleteImageIds" value="@img.Id" id="delete_@img.Id">
+                                                <label class="form-check-label" for="delete_@img.Id">Remove</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="section" style="border:1px solid #ccc; padding:10px; margin-bottom:20px;">
+        <h4>PART II – INCIDENT REPORT</h4>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label asp-for="IncidentDateTime" class="control-label"></label>
+                    <input asp-for="IncidentDateTime" class="form-control" type="datetime-local" />
+                </div>
+                <div class="form-group">
+                    <label asp-for="CauseOfDamage" class="control-label"></label>
+                    <textarea asp-for="CauseOfDamage" class="form-control" rows="3"></textarea>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label asp-for="ImmediateAction" class="control-label"></label>
+                    <textarea asp-for="ImmediateAction" class="form-control" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label asp-for="RecommendedAction" class="control-label"></label>
+                    <select asp-for="RecommendedAction" class="form-control">
+                        <option value="">-- Select --</option>
+                        <option value="1">Internal Repair</option>
+                        <option value="2">External Repair</option>
+                        <option value="3">Parts for Replacement</option>
+                        <option value="4">Disposal</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label asp-for="ReceivedByEmployeeId" class="control-label">Received by (optional)</label>
+                    <select asp-for="ReceivedByEmployeeId" class="form-control" asp-items="employees">
+                        <option value="">-- Select --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label asp-for="ReceivedDateTime" class="control-label">Received date/time</label>
+                    <input asp-for="ReceivedDateTime" class="form-control" type="datetime-local" />
+                </div>
+
+                <!-- Inside the PART II section, before closing the row or after the text fields -->
+                <div class="form-group">
+                    <label>Attach Incident Picture(s) (optional)</label>
+                    <input type="file" name="partIIimages" multiple accept="image/*" class="form-control-file" />
+                    @Html.ValidationMessage("partIIimages", new { @class = "text-danger" })
+                    <small class="form-text text-muted">Photos of the incident, damage, or scene.</small>
+                </div>
+
+                @if (Model.Images != null && Model.Images.Any(i => i.Section == "PartII"))
+                {
+                    <div class="mt-3">
+                        <label>Current Incident Pictures:</label>
+                        <div class="row">
+                            @foreach (var img in Model.Images.Where(i => i.Section == "PartII"))
+                            {
+                                <div class="col-md-3 mb-2">
+                                    <div class="card">
+                                        <img src="@img.FilePath" class="card-img-top" style="max-height:120px; object-fit:cover;" />
+                                        <div class="card-body p-1 text-center">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="deleteImageIds" value="@img.Id" id="del_@img.Id">
+                                                <label class="form-check-label" for="del_@img.Id">Remove</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="form-group mt-3">
+        <input type="submit" value="Save Changes" class="btn btn-primary" />
+        <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

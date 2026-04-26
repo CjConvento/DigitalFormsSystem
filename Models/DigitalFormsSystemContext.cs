@@ -20,6 +20,8 @@ public partial class DigitalFormsSystemContext : DbContext
 
     public virtual DbSet<DamagedReport> DamagedReports { get; set; }
 
+    public virtual DbSet<DamagedReportImage> DamagedReportImages { get; set; }
+
     public virtual DbSet<Employee> Employees { get; set; }
 
     public virtual DbSet<ExistingUnitDetail> ExistingUnitDetails { get; set; }

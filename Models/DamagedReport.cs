@@ -60,4 +60,13 @@ public partial class DamagedReport
     public DateTime? CreatedAt { get; set; }
 
     public DateTime? UpdatedAt { get; set; }
+
+    // ========== Navigation properties (add inside the class) ==========
+    public virtual Employee? ReportedByEmployee { get; set; }
+    public virtual Employee? ReceivedByEmployee { get; set; }
+    public virtual Employee? InvestigatedByEmployee { get; set; }
+    public virtual Employee? VerifiedByEmployee { get; set; }
+    public virtual Employee? NotedByEmployee { get; set; }
+
+    public virtual ICollection<DamagedReportImage> Images { get; set; } = new List<DamagedReportImage>();
 }

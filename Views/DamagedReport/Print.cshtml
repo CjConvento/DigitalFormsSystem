@@ -1,14 +1,105 @@
-﻿@{
+﻿@model DigitalFormsSystem.Models.DamagedReport
+
+@{
     Layout = null;
-    ViewData["Title"] = "Print Damaged Report";
 }
+
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8" />
-    <title>Print Damaged Report</title>
+    <title>Damaged Report - @Model.ControlNo</title>
+    <link rel="stylesheet" href="~/css/site.css" />
+    <style>
+        body { margin: 20px; }
+        .print-container { max-width: 1200px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 20px; }
+        .section { border: 1px solid #000; padding: 10px; margin-bottom: 15px; }
+        .section-title { font-weight: bold; background: #f0f0f0; padding: 5px; }
+        .print-table { width: 100%; border-collapse: collapse; }
+        .print-table td, .print-table th { border: 1px solid #000; padding: 5px; vertical-align: top; }
+        .no-print { margin-top: 20px; text-align: center; }
+        @@media print {
+            body { margin: 0; }
+            .no-print { display: none; }
+        }
+    </style>
 </head>
 <body>
-    <h1>Print layout coming soon...</h1>
+    <div class="print-container">
+        <div class="header">
+            <div class="title">DAMAGED REPORT</div>
+            <div>HRDA-F-2.9.10.8 Rev.4</div>
+            <div>Ctrl. No: @Model.ControlNo</div>
+        </div>
+
+        <!-- PART I – ITEM DESCRIPTION (filled) -->
+        <div class="section">
+            <div class="section-title">PART I – ITEM DESCRIPTION</div>
+            <table class="print-table">
+                <tr><td style="width:200px">Item:</td><td>@Model.Item</td></tr>
+                <tr><td>Fixed Asset Code:</td><td>@Model.FixedAssetCode</td></tr>
+                <tr><td>Date Purchased:</td><td>@(Model.DatePurchased?.ToString("yyyy-MM-dd"))</td></tr>
+                <tr><td>Brand / Size:</td><td>@Model.BrandSize</td></tr>
+                <tr><td>Location / User:</td><td>@Model.LocationUser</td></tr>
+                <tr><td>Serial Number:</td><td>@Model.SerialNumber</td></tr>
+                <tr><td>Color:</td><td>@Model.Color</td></tr>
+            </table>
+        </div>
+
+        <!-- PART II – INCIDENT REPORT (filled) -->
+        <div class="section">
+            <div class="section-title">PART II – INCIDENT REPORT</div>
+            <table class="print-table">
+                <tr><td>Incident Date/Time:</td><td>@(Model.IncidentDateTime?.ToString("yyyy-MM-dd HH:mm"))</td></tr>
+                <tr><td>Cause of Damage:</td><td>@Model.CauseOfDamage</td></tr>
+                <tr><td>Immediate Action:</td><td>@Model.ImmediateAction</td></tr>
+                <tr><td>Recommended Action:</td><td>
+                        @{
+                            var actionText = "Not specified";
+                            if (Model.RecommendedAction == 1) actionText = "Internal Repair";
+                            else if (Model.RecommendedAction == 2) actionText = "External Repair";
+                            else if (Model.RecommendedAction == 3) actionText = "Parts for Replacement";
+                            else if (Model.RecommendedAction == 4) actionText = "Disposal";
+                        }
+                        @actionText
+                </td></tr>
+                <tr><td>Received by:</td><td>@(Model.ReceivedByEmployee?.Name)</td></tr>
+                <tr><td>Received Date/Time:</td><td>@(Model.ReceivedDateTime?.ToString("yyyy-MM-dd HH:mm"))</td></tr>
+            </table>
+        </div>
+
+        <!-- PART III – INITIAL INVESTIGATION (blank for manual approval) -->
+        <div class="section">
+            <div class="section-title">PART III – INITIAL INVESTIGATION (to be filled by GAD-HR)</div>
+            <table class="print-table">
+                <tr><td>Findings:</td><td>_________________________________________________________________</td></tr>
+                <tr><td>Recommendation:</td><td>_________________________________________________________________</td></tr>
+                <tr><td>Negligence:</td><td>☐ negligence of user ☐ not negligence ☐ others: ________</td></tr>
+                <tr><td>Remarks:</td><td>_________________________________________________________________</td></tr>
+                <tr><td>Administrative Discipline:</td><td>☐ Yes ☐ No</td></tr>
+                <tr><td>Investigated by (Maintenance/Safety Officer):</td><td>_________________________ (Signature/Date)</td></tr>
+                <tr><td>Verified by (GAD):</td><td>_________________________ (Signature/Date)</td></tr>
+                <tr><td>Noted by (Executive Office):</td><td>_________________________ (Signature/Date)</td></tr>
+            </table>
+        </div>
+
+        <!-- PART IV – FOLLOW-UP STATUS (blank) -->
+        <div class="section">
+            <div class="section-title">PART IV – FOLLOW-UP STATUS (for GAD only)</div>
+            <table class="print-table">
+                <thead><tr><th>Date</th><th>Status</th><th>Update by</th><th>Noted by</th></tr></thead>
+                <tbody>
+                    <tr><td>_________</td><td>_________</td><td>_________</td><td>_________</td></tr>
+                    <tr><td>_________</td><td>_________</td><td>_________</td><td>_________</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="no-print">
+            <button onclick="window.print()" class="btn btn-primary">Print this form</button>
+            <button onclick="window.close()" class="btn btn-secondary">Close</button>
+        </div>
+    </div>
 </body>
 </html>
