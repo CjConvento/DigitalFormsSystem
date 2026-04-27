@@ -18,10 +18,46 @@
         </div>
     }
 
-    <!-- same fields as Create.cshtml, exactly as above -->
+    @* PART I – ITEM DESCRIPTION *@
     <div class="section" style="border:1px solid #ccc; padding:10px; margin-bottom:20px;">
         <h4>PART I – ITEM DESCRIPTION</h4>
-        <div class="row">
+
+        <!-- Modern upload card (placed first) -->
+        <div class="upload-card" id="uploadCardPartI">
+            <i class="fas fa-plus-circle"></i>
+            <p>Upload Image</p>
+            <small class="text-muted">Click to select additional item pictures</small>
+        </div>
+        <input type="file" name="partIimages" id="partIimages" multiple accept="image/*" class="hidden-file-input" />
+        @Html.ValidationMessage("partIimages", new { @class = "text-danger" })
+        <div id="edit-partI-images-preview" class="row mt-2"></div>
+
+        <!-- Existing images (with delete checkboxes) -->
+        @if (Model.Images != null && Model.Images.Any(i => i.Section == "PartI"))
+        {
+            <div class="mt-3">
+                <label>Current Item Pictures:</label>
+                <div class="row">
+                    @foreach (var img in Model.Images.Where(i => i.Section == "PartI"))
+                    {
+                        <div class="col-md-3 mb-2">
+                            <div class="card">
+                                <img src="@img.FilePath" class="card-img-top" style="max-height:120px; object-fit:cover;" />
+                                <div class="card-body p-1 text-center">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="deleteImageIds" value="@img.Id" id="delete_@img.Id">
+                                        <label class="form-check-label" for="delete_@img.Id">Remove</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        <!-- Original text fields (unchanged) -->
+        <div class="row mt-4">
             <div class="col-md-6">
                 <div class="form-group">
                     <label asp-for="Item" class="control-label"></label>
@@ -51,44 +87,52 @@
                 </div>
                 <div class="form-group">
                     <label asp-for="Color" class="control-label"></label>
-                    <input asp-for="Color" class="form-control" />
+                    <input asp-for="Color" class="form-control" type="color" />
                 </div>
-
-                <div class="form-group">
-                    <label>Add more Item Picture(s) (optional)</label>
-                    <input type="file" name="partIimages" multiple accept="image/*" class="form-control-file" />
-                    @Html.ValidationMessage("partIimages", new { @class = "text-danger" })
-                    <small class="form-text text-muted">You can select additional images of the asset.</small>
-                </div>
-                @if (Model.Images != null && Model.Images.Any(i => i.Section == "PartI"))
-                {
-                    <div class="mt-3">
-                        <label>Current Item Pictures:</label>
-                        <div class="row">
-                            @foreach (var img in Model.Images.Where(i => i.Section == "PartI"))
-                            {
-                                <div class="col-md-3 mb-2">
-                                    <div class="card">
-                                        <img src="@img.FilePath" class="card-img-top" style="max-height:120px; object-fit:cover;" />
-                                        <div class="card-body p-1 text-center">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" name="deleteImageIds" value="@img.Id" id="delete_@img.Id">
-                                                <label class="form-check-label" for="delete_@img.Id">Remove</label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            }
-                        </div>
-                    </div>
-                }
             </div>
         </div>
     </div>
 
+    @* PART II – INCIDENT REPORT *@
     <div class="section" style="border:1px solid #ccc; padding:10px; margin-bottom:20px;">
         <h4>PART II – INCIDENT REPORT</h4>
-        <div class="row">
+
+        <!-- Modern upload card (placed first) -->
+        <div class="upload-card" id="uploadCardPartII">
+            <i class="fas fa-plus-circle"></i>
+            <p>Upload Image</p>
+            <small class="text-muted">Click to select additional incident pictures</small>
+        </div>
+        <input type="file" name="partIIimages" id="partIIimages" multiple accept="image/*" class="hidden-file-input" />
+        @Html.ValidationMessage("partIIimages", new { @class = "text-danger" })
+        <div id="edit-partII-images-preview" class="row mt-2"></div>
+
+        <!-- Existing incident images (with delete checkboxes) -->
+        @if (Model.Images != null && Model.Images.Any(i => i.Section == "PartII"))
+        {
+            <div class="mt-3">
+                <label>Current Incident Pictures:</label>
+                <div class="row">
+                    @foreach (var img in Model.Images.Where(i => i.Section == "PartII"))
+                    {
+                        <div class="col-md-3 mb-2">
+                            <div class="card">
+                                <img src="@img.FilePath" class="card-img-top" style="max-height:120px; object-fit:cover;" />
+                                <div class="card-body p-1 text-center">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="deleteImageIds" value="@img.Id" id="del_@img.Id">
+                                        <label class="form-check-label" for="del_@img.Id">Remove</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        <!-- Original text fields (unchanged, but moved after the image area) -->
+        <div class="row mt-4">
             <div class="col-md-6">
                 <div class="form-group">
                     <label asp-for="IncidentDateTime" class="control-label"></label>
@@ -124,41 +168,11 @@
                     <label asp-for="ReceivedDateTime" class="control-label">Received date/time</label>
                     <input asp-for="ReceivedDateTime" class="form-control" type="datetime-local" />
                 </div>
-
-                <!-- Inside the PART II section, before closing the row or after the text fields -->
-                <div class="form-group">
-                    <label>Attach Incident Picture(s) (optional)</label>
-                    <input type="file" name="partIIimages" multiple accept="image/*" class="form-control-file" />
-                    @Html.ValidationMessage("partIIimages", new { @class = "text-danger" })
-                    <small class="form-text text-muted">Photos of the incident, damage, or scene.</small>
-                </div>
-
-                @if (Model.Images != null && Model.Images.Any(i => i.Section == "PartII"))
-                {
-                    <div class="mt-3">
-                        <label>Current Incident Pictures:</label>
-                        <div class="row">
-                            @foreach (var img in Model.Images.Where(i => i.Section == "PartII"))
-                            {
-                                <div class="col-md-3 mb-2">
-                                    <div class="card">
-                                        <img src="@img.FilePath" class="card-img-top" style="max-height:120px; object-fit:cover;" />
-                                        <div class="card-body p-1 text-center">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" name="deleteImageIds" value="@img.Id" id="del_@img.Id">
-                                                <label class="form-check-label" for="del_@img.Id">Remove</label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            }
-                        </div>
-                    </div>
-                }
             </div>
         </div>
     </div>
 
+    @* SUBMIT *@
     <div class="form-group mt-3">
         <input type="submit" value="Save Changes" class="btn btn-primary" />
         <a asp-action="Index" class="btn btn-secondary">Cancel</a>
@@ -167,4 +181,5 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/edit-image-preview.js"></script>
 }
