@@ -5,7 +5,6 @@ let selectedFilesPartII = [];
 function createPreviewCard(file, containerId, index, part) {
     const reader = new FileReader();
     const cardDiv = document.createElement('div');
-    cardDiv.className = 'col-md-3 mb-2';
     cardDiv.setAttribute('data-index', index);
     cardDiv.setAttribute('data-part', part);
     reader.onload = function (e) {
