@@ -472,23 +472,38 @@ namespace DigitalFormsSystem.Controllers
 
         //#HELPERS
 
-        private string GenerateControlNo()
+        private string GenerateControlNo(int retryCount = 0)
         {
+            if (retryCount > 5)
+                throw new Exception("Unable to generate a unique control number after 5 attempts.");
+
             var year = DateTime.Now.ToString("yy");
             var month = DateTime.Now.ToString("MM");
             var prefix = $"GAD-DR-{year}{month}-";
-            var last = _context.DamagedReports
+
+            var lastRequest = _context.DamagedReports
                 .Where(r => r.ControlNo != null && r.ControlNo.StartsWith(prefix))
                 .OrderByDescending(r => r.ControlNo)
                 .Select(r => r.ControlNo)
                 .FirstOrDefault();
-            int next = 1;
-            if (last != null && last.Length > prefix.Length)
+
+            int nextNumber = 1;
+            if (lastRequest != null && lastRequest.Length > prefix.Length)
             {
-                if (int.TryParse(last.Substring(prefix.Length), out int lastNum))
-                    next = lastNum + 1;
+                if (int.TryParse(lastRequest.Substring(prefix.Length), out int lastNum))
+                    nextNumber = lastNum + 1;
             }
-            return $"{prefix}{next:D3}";
+
+            string newControlNo = $"{prefix}{nextNumber:D3}";
+
+            // Avoid race condition: check again if the generated number already exists
+            bool alreadyExists = _context.DamagedReports.Any(r => r.ControlNo == newControlNo);
+            if (alreadyExists)
+            {
+                return GenerateControlNo(retryCount + 1);
+            }
+
+            return newControlNo;
         }
 
         private bool IsValidImage(IFormFile file, out string errorMessage)
