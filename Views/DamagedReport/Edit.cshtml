@@ -2,6 +2,7 @@
 @{
     ViewData["Title"] = "Edit Damaged Report";
     var employees = ViewBag.Employees as SelectList;
+    var isGad = Context.Session.GetString("EmployeeDepartment") == "GAD";
 }
 
 <h1>Edit Damaged Report</h1>
@@ -171,6 +172,71 @@
             </div>
         </div>
     </div>
+
+    @* PART IV – FOLLOW-UP STATUS (GAD only) *@
+    @if (isGad)
+    {
+        <div class="section" style="border:1px solid #ccc; padding:10px; margin-bottom:20px;">
+            <h4>PART IV – FOLLOW-UP STATUS (GAD only)</h4>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label asp-for="Findings"></label>
+                        <textarea asp-for="Findings" class="form-control" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="Recommendation"></label>
+                        <textarea asp-for="Recommendation" class="form-control" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="NegligenceFlag"></label>
+                        <select asp-for="NegligenceFlag" class="form-control">
+                            <option value="">-- Select --</option>
+                            <option value="1">Negligence of user/in-charge</option>
+                            <option value="2">Not negligence</option>
+                            <option value="3">Others</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="NegligenceDetails"></label>
+                        <input asp-for="NegligenceDetails" class="form-control" />
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label asp-for="Remarks"></label>
+                        <textarea asp-for="Remarks" class="form-control" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="AdministrativeDiscipline"></label>
+                        <select asp-for="AdministrativeDiscipline" class="form-control">
+                            <option value="">-- Select --</option>
+                            <option value="true">Yes</option>
+                            <option value="false">No</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="InvestigatedByEmployeeId"></label>
+                        <select asp-for="InvestigatedByEmployeeId" class="form-control" asp-items="employees">
+                            <option value="">-- Select --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="VerifiedByEmployeeId"></label>
+                        <select asp-for="VerifiedByEmployeeId" class="form-control" asp-items="employees">
+                            <option value="">-- Select --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="NotedByEmployeeId"></label>
+                        <select asp-for="NotedByEmployeeId" class="form-control" asp-items="employees">
+                            <option value="">-- Select --</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
 
     @* SUBMIT *@
     <div class="form-group mt-3">
