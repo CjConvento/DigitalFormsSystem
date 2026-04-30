@@ -21,6 +21,7 @@ namespace DigitalFormsSystem.Controllers
             if (empId == null) return RedirectToAction("Login", "Account");
 
             var requests = await _context.FixedAssetRequests
+                .Where(r => r.RequestedByEmployeeId == empId.Value)   // ← only the current user's requests
                 .Include(r => r.RequestedByEmployee)
                 .OrderByDescending(r => r.DateRequested)
                 .ToListAsync();
