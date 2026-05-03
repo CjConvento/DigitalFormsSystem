@@ -77,6 +77,7 @@
                 <div class="form-group">
                     <label asp-for="IncidentDateTime" class="control-label"></label>
                     <input asp-for="IncidentDateTime" class="form-control" type="datetime-local" />
+                    <span asp-validation-for="IncidentDateTime" class="text-danger"></span>
                 </div>
                 <div class="form-group">
                     <label asp-for="CauseOfDamage" class="control-label"></label>
@@ -107,6 +108,7 @@
                 <div class="form-group">
                     <label asp-for="ReceivedDateTime" class="control-label">Received date/time</label>
                     <input asp-for="ReceivedDateTime" class="form-control" type="datetime-local" />
+                    <span asp-validation-for="ReceivedDateTime" class="text-danger"></span>
                 </div>            
             </div>
         </div>
@@ -118,8 +120,25 @@
     </div>
 </form>
 
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="alert alert-danger">
+        <strong>ModelState Errors:</strong>
+        <ul>
+            @foreach (var key in ViewData.ModelState.Keys)
+            {
+                foreach (var error in ViewData.ModelState[key].Errors)
+                {
+                    <li>@key: @error.ErrorMessage</li>
+                }
+            }
+        </ul>
+    </div>
+}
+
 @section Scripts {
     <script src="~/lib/jquery-validation/dist/jquery.validate.min.js"></script>
     <script src="~/lib/jquery-validation-unobtrusive/jquery.validate.unobtrusive.min.js"></script>
     <script src="~/js/create-image-preview.js"></script>
+    <script src="~/js/create-formdatetime.js"></script>
 }

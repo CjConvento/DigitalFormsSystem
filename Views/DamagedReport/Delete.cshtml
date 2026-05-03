@@ -23,7 +23,7 @@
         </dl>
     </div>
     <div class="card-footer">
-        <form asp-action="DeleteConfirmed" asp-route-id="@Model.Id" method="post">
+        <form asp-action="Delete" asp-route-id="@Model.Id" method="post">
             <input type="submit" value="Delete Permanently" class="btn btn-danger" />
             <a asp-action="Index" class="btn btn-secondary">Cancel</a>
         </form>

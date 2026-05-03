@@ -1,13 +1,14 @@
 ﻿using DigitalFormsSystem.Models;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
-using Microsoft.AspNetCore.Hosting;
-using System.IO;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -79,11 +80,75 @@ namespace DigitalFormsSystem.Controllers
             report.UpdatedAt = DateTime.Now;
             report.RequestStatus = "Draft";
 
+            // Remove validation errors for properties we set manually
+            ModelState.Remove("ControlNo");
+            ModelState.Remove("ReportedByEmployeeId");
+            ModelState.Remove("CreatedAt");
+            ModelState.Remove("UpdatedAt");
+            ModelState.Remove("RequestStatus");
+
+            // Remove validation for navigation properties
             ModelState.Remove("ReportedByEmployee");
             ModelState.Remove("ReceivedByEmployee");
             ModelState.Remove("InvestigatedByEmployee");
             ModelState.Remove("VerifiedByEmployee");
             ModelState.Remove("NotedByEmployee");
+
+            // ========== MANUAL DATE PARSING ==========
+            // DatePurchased (DateOnly?)
+            var datePurchasedStr = Request.Form["DatePurchased"].ToString();
+            if (!string.IsNullOrEmpty(datePurchasedStr))
+            {
+                if (!DateOnly.TryParseExact(datePurchasedStr, "yyyy-MM-dd", out var datePurchased))
+                    ModelState.AddModelError("DatePurchased", "Invalid date format.");
+                else
+                    report.DatePurchased = datePurchased;
+            }
+            else
+            {
+                report.DatePurchased = null;
+            }
+
+            // IncidentDateTime (DateTime?)
+            var incidentDateTimeStr = Request.Form["IncidentDateTime"].ToString();
+            // Log the raw value to the Output window (View → Output in VS)
+            Console.WriteLine($"IncidentDateTime raw: '{incidentDateTimeStr}'");
+
+            if (!string.IsNullOrWhiteSpace(incidentDateTimeStr))
+            {
+                // Try multiple common formats
+                var formats = new[] { "yyyy-MM-ddTHH:mm", "yyyy-MM-ddTHH:mm:ss", "yyyy-MM-ddTHH:mm:ss.fff" };
+                if (DateTime.TryParseExact(incidentDateTimeStr, formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out var incidentDateTime))
+                    report.IncidentDateTime = incidentDateTime;
+                else if (DateTime.TryParse(incidentDateTimeStr, CultureInfo.InvariantCulture, DateTimeStyles.None, out incidentDateTime))
+                    report.IncidentDateTime = incidentDateTime;
+                else
+                    ModelState.AddModelError("IncidentDateTime", "Invalid incident date/time format.");
+            }
+            else
+            {
+                report.IncidentDateTime = null;
+            }
+
+            // ReceivedDateTime (same)
+            var receivedDateTimeStr = Request.Form["ReceivedDateTime"].ToString();
+            Console.WriteLine($"ReceivedDateTime raw: '{receivedDateTimeStr}'");
+
+            if (!string.IsNullOrWhiteSpace(receivedDateTimeStr))
+            {
+                var formats = new[] { "yyyy-MM-ddTHH:mm", "yyyy-MM-ddTHH:mm:ss", "yyyy-MM-ddTHH:mm:ss.fff" };
+                if (DateTime.TryParseExact(receivedDateTimeStr, formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out var receivedDateTime))
+                    report.ReceivedDateTime = receivedDateTime;
+                else if (DateTime.TryParse(receivedDateTimeStr, CultureInfo.InvariantCulture, DateTimeStyles.None, out receivedDateTime))
+                    report.ReceivedDateTime = receivedDateTime;
+                else
+                    ModelState.AddModelError("ReceivedDateTime", "Invalid received date/time format.");
+            }
+            else
+            {
+                report.ReceivedDateTime = null;
+            }
+            // ========================================
 
             // GAD-only: clear Part IV fields for non-GAD
             var isGad = HttpContext.Session.GetString("EmployeeDepartment") == "GAD";
@@ -100,9 +165,8 @@ namespace DigitalFormsSystem.Controllers
                 report.NotedByEmployeeId = null;
             }
 
-            // === 1. Validate all images before saving the report ===
+            // === 1. Validate all images before saving ===
             bool hasImageError = false;
-
             if (partIimages != null)
             {
                 foreach (var img in partIimages)
@@ -125,7 +189,6 @@ namespace DigitalFormsSystem.Controllers
                     }
                 }
             }
-
             if (hasImageError)
             {
                 ViewBag.Employees = new SelectList(_context.Employees, "Id", "Name", report.ReceivedByEmployeeId);
@@ -138,7 +201,7 @@ namespace DigitalFormsSystem.Controllers
                 _context.Add(report);
                 await _context.SaveChangesAsync();
 
-                // --- Save Part I images ---
+                // Save Part I images
                 var uploadsFolder = GetUploadsFolder();
                 if (!Directory.Exists(uploadsFolder))
                     Directory.CreateDirectory(uploadsFolder);
@@ -170,7 +233,7 @@ namespace DigitalFormsSystem.Controllers
                     await _context.SaveChangesAsync();
                 }
 
-                // --- Save Part II images ---
+                // Save Part II images
                 if (partIIimages != null)
                 {
                     foreach (var img in partIIimages)
@@ -202,6 +265,7 @@ namespace DigitalFormsSystem.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
+            // Preserve existing units (images are not preserved, but that's acceptable)
             ViewBag.Employees = new SelectList(_context.Employees, "Id", "Name", report.ReceivedByEmployeeId);
             return View(report);
         }
