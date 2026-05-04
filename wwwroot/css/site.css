@@ -196,6 +196,39 @@ body {
         font-size: 10pt;
         padding: 2px;
     }
+
+    /* ===== IMAGE BACK PAGE STYLES ===== */
+    .images-back-page {
+        page-break-before: always;
+        margin-top: 20px;
+    }
+
+    .image-gallery {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        justify-content: center;
+    }
+
+        .image-gallery .image-item {
+            width: 200px;
+            text-align: center;
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+
+        .image-gallery img {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #ccc;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .image-gallery .caption {
+            font-size: 9pt;
+            margin-top: 5px;
+            word-wrap: break-word;
+        }
 }
 
 

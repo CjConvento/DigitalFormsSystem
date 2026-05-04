@@ -96,6 +96,53 @@
             </table>
         </div>
 
+        <!-- ========== IMAGES ON BACK PAGE ========== -->
+        @if (Model.Images != null && Model.Images.Any())
+        {
+            var partIImages = Model.Images.Where(i => i.Section == "PartI").ToList();
+            var partIIImages = Model.Images.Where(i => i.Section == "PartII").ToList();
+
+            if (partIImages.Any() || partIIImages.Any())
+            {
+                <div class="images-back-page">
+                    <h3>ATTACHED PHOTOGRAPHS</h3>
+
+                    @if (partIImages.Any())
+                    {
+                        <div style="margin-bottom:30px;">
+                            <div style="font-weight:bold; margin-bottom:10px;">Item Pictures:</div>
+                            <div class="image-gallery">
+                                @foreach (var img in partIImages)
+                                {
+                                    <div class="image-item">
+                                        <img src="@img.FilePath" alt="@img.FileName" />
+                                        <div class="caption">@img.FileName</div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    @if (partIIImages.Any())
+                    {
+                        <div>
+                            <div style="font-weight:bold; margin-bottom:10px;">Incident Pictures:</div>
+                            <div class="image-gallery">
+                                @foreach (var img in partIIImages)
+                                {
+                                    <div class="image-item">
+                                        <img src="@img.FilePath" alt="@img.FileName" />
+                                        <div class="caption">@img.FileName</div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        }
+
+        @* PRINT ACTION *@
         <div class="no-print">
             <button onclick="window.print()" class="btn btn-primary">Print this form</button>
             <button onclick="window.close()" class="btn btn-secondary">Close</button>
