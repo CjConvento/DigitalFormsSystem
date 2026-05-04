@@ -35,6 +35,7 @@ namespace DigitalFormsSystem.Controllers
 
             var reports = await _context.DamagedReports
                 .Include(r => r.ReportedByEmployee)
+                .Where(r => r.ReportedByEmployeeId == empId)
                 .OrderByDescending(r => r.CreatedAt)
                 .ToListAsync();
             return View(reports);

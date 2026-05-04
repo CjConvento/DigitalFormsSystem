@@ -1,19 +1,31 @@
 ﻿// create-formdatetime.js
 document.addEventListener('DOMContentLoaded', function () {
-    // Helper function para i-update ang hidden field
+    // Helper: convert "02:30 PM" -> "14:30"
+    function convertTo24Hour(time12) {
+        if (!time12) return '';
+        var parts = time12.match(/(\d+):(\d+)\s*(AM|PM)/i);
+        if (!parts) return time12; // fallback
+        var hour = parseInt(parts[1]);
+        var minute = parts[2];
+        var ampm = parts[3].toUpperCase();
+        if (ampm === 'PM' && hour !== 12) hour += 12;
+        if (ampm === 'AM' && hour === 12) hour = 0;
+        return hour.toString().padStart(2, '0') + ':' + minute;
+    }
+
     function updateCombinedDateTime(prefix) {
         var dateVal = document.getElementById(prefix + 'Date')?.value || '';
-        var timeVal = document.getElementById(prefix + 'Time')?.value || '';
-        var combined = (dateVal && timeVal) ? dateVal + 'T' + timeVal : '';
+        var timeVal12 = document.getElementById(prefix + 'Time')?.value || '';
+        var timeVal24 = convertTo24Hour(timeVal12);
+        var combined = (dateVal && timeVal24) ? dateVal + 'T' + timeVal24 : '';
         var hiddenField = document.querySelector('[name="' + prefix + 'DateTime"]');
         if (hiddenField) {
             hiddenField.value = combined;
-            // Optional: i-trigger ang validation manually kung kinakailangan
             hiddenField.dispatchEvent(new Event('change', { bubbles: true }));
         }
     }
 
-    // --- INCIDENT Date & Time Pickers ---
+    // Incident
     flatpickr("#IncidentDate", {
         dateFormat: "Y-m-d",
         allowInput: false,
@@ -22,13 +34,13 @@ document.addEventListener('DOMContentLoaded', function () {
     flatpickr("#IncidentTime", {
         enableTime: true,
         noCalendar: true,
-        dateFormat: "H:i",
-        time_24hr: true,
+        dateFormat: "h:i K",        // 12-hour with AM/PM
+        time_24hr: false,
         allowInput: false,
         onChange: function () { updateCombinedDateTime('Incident'); }
     });
 
-    // --- RECEIVED Date & Time Pickers ---
+    // Received
     flatpickr("#ReceivedDate", {
         dateFormat: "Y-m-d",
         allowInput: false,
@@ -37,14 +49,14 @@ document.addEventListener('DOMContentLoaded', function () {
     flatpickr("#ReceivedTime", {
         enableTime: true,
         noCalendar: true,
-        dateFormat: "H:i",
-        time_24hr: true,
+        dateFormat: "h:i K",
+        time_24hr: false,
         allowInput: false,
         onChange: function () { updateCombinedDateTime('Received'); }
     });
 
-    // Siguruhin na kapag nag-submit ang form, updated ang hidden fields (redundant pero safe)
-    document.querySelector('form').addEventListener('submit', function () {
+    // Submit safety
+    document.querySelector('form')?.addEventListener('submit', function () {
         updateCombinedDateTime('Incident');
         updateCombinedDateTime('Received');
     });
