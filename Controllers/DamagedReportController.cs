@@ -525,11 +525,18 @@ namespace DigitalFormsSystem.Controllers
             if (empId == null) return RedirectToAction("Login", "Account");
 
             var report = await _context.DamagedReports
-                .Include(r => r.ReportedByEmployee)   // fixed: was ReportedByEmployeeId
+                .Include(r => r.ReportedByEmployee)
                 .Include(r => r.ReceivedByEmployee)
-                .Include(r => r.Images)              // include images for print (optional)
+                .Include(r => r.Images)  // ✅ siguradong kasama ang mga larawan
+                .AsNoTracking()          // optional: basahin lang, hindi na kailangan i-save
                 .FirstOrDefaultAsync(r => r.Id == id);
+
             if (report == null) return NotFound();
+
+            // Siguraduhing ang Images ay hindi null (kung walang laman, gawing empty list)
+            if (report.Images == null)
+                report.Images = new List<DamagedReportImage>();
+
             return View(report);
         }
 
