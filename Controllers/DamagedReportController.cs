@@ -300,6 +300,11 @@ namespace DigitalFormsSystem.Controllers
 
             if (id != updatedReport.Id) return NotFound();
 
+            ModelState.Remove("ControlNo");
+            ModelState.Remove("ReportedByEmployeeId");
+            ModelState.Remove("CreatedAt");
+            ModelState.Remove("UpdatedAt");
+            ModelState.Remove("RequestStatus");
             ModelState.Remove("ReportedByEmployee");
             ModelState.Remove("ReceivedByEmployee");
             ModelState.Remove("InvestigatedByEmployee");
@@ -321,6 +326,9 @@ namespace DigitalFormsSystem.Controllers
                         return RedirectToAction(nameof(Index));
                     }
 
+                    var isGad = HttpContext.Session.GetString("EmployeeDepartment") == "GAD";
+
+
                     // --- 1. Delete selected images (works for both sections) ---
                     if (deleteImageIds != null && deleteImageIds.Any())
                     {
@@ -334,38 +342,6 @@ namespace DigitalFormsSystem.Controllers
                         }
                         await _context.SaveChangesAsync();
                     }
-
-                    // --- 2. Update scalar fields ---
-                    existing.Item = updatedReport.Item;
-                    existing.FixedAssetCode = updatedReport.FixedAssetCode;
-                    existing.DatePurchased = updatedReport.DatePurchased;
-                    existing.BrandSize = updatedReport.BrandSize;
-                    existing.LocationUser = updatedReport.LocationUser;
-                    existing.SerialNumber = updatedReport.SerialNumber;
-                    existing.Color = updatedReport.Color;
-                    existing.IncidentDateTime = updatedReport.IncidentDateTime;
-                    existing.CauseOfDamage = updatedReport.CauseOfDamage;
-                    existing.ImmediateAction = updatedReport.ImmediateAction;
-                    existing.RecommendedAction = updatedReport.RecommendedAction;
-                    existing.ReceivedByEmployeeId = updatedReport.ReceivedByEmployeeId;
-                    existing.ReceivedDateTime = updatedReport.ReceivedDateTime;
-                    existing.UpdatedAt = DateTime.Now;
-
-                    var isGad = HttpContext.Session.GetString("EmployeeDepartment") == "GAD";
-                    if (isGad)
-                    {
-                        existing.Findings = updatedReport.Findings;
-                        existing.Recommendation = updatedReport.Recommendation;
-                        existing.NegligenceFlag = updatedReport.NegligenceFlag;
-                        existing.NegligenceDetails = updatedReport.NegligenceDetails;
-                        existing.Remarks = updatedReport.Remarks;
-                        existing.AdministrativeDiscipline = updatedReport.AdministrativeDiscipline;
-                        existing.InvestigatedByEmployeeId = updatedReport.InvestigatedByEmployeeId;
-                        existing.VerifiedByEmployeeId = updatedReport.VerifiedByEmployeeId;
-                        existing.NotedByEmployeeId = updatedReport.NotedByEmployeeId;
-                    }
-
-                    await _context.SaveChangesAsync();   // <-- nandito na yung save ng scalar changes
 
                     // ========== ILAGAY DITO ANG VALIDATION NG MGA BAGONG IMAGES ==========
                     bool hasImageError = false;
@@ -394,11 +370,83 @@ namespace DigitalFormsSystem.Controllers
                     }
                     if (hasImageError)
                     {
+                        // I-reload ang original report (kasama ang Images) mula sa database
+                        var originalReport = await _context.DamagedReports
+                            .Include(r => r.Images)
+                            .FirstOrDefaultAsync(r => r.Id == id);
+
+                        if (originalReport != null)
+                        {
+                            // I-copy ang text field changes (scalar) mula updatedReport patungo sa originalReport
+                            originalReport.Item = updatedReport.Item;
+                            originalReport.FixedAssetCode = updatedReport.FixedAssetCode;
+                            originalReport.DatePurchased = updatedReport.DatePurchased;
+                            originalReport.BrandSize = updatedReport.BrandSize;
+                            originalReport.LocationUser = updatedReport.LocationUser;
+                            originalReport.SerialNumber = updatedReport.SerialNumber;
+                            originalReport.Color = updatedReport.Color;
+                            originalReport.IncidentDateTime = updatedReport.IncidentDateTime;
+                            originalReport.CauseOfDamage = updatedReport.CauseOfDamage;
+                            originalReport.ImmediateAction = updatedReport.ImmediateAction;
+                            originalReport.RecommendedAction = updatedReport.RecommendedAction;
+                            originalReport.ReceivedByEmployeeId = updatedReport.ReceivedByEmployeeId;
+                            originalReport.ReceivedDateTime = updatedReport.ReceivedDateTime;
+
+                            // Kung GAD, kopyahin din ang Part IV fields (opsyonal)
+                            if (isGad)
+                            {
+                                originalReport.Findings = updatedReport.Findings;
+                                originalReport.Recommendation = updatedReport.Recommendation;
+                                originalReport.NegligenceFlag = updatedReport.NegligenceFlag;
+                                originalReport.NegligenceDetails = updatedReport.NegligenceDetails;
+                                originalReport.Remarks = updatedReport.Remarks;
+                                originalReport.AdministrativeDiscipline = updatedReport.AdministrativeDiscipline;
+                                originalReport.InvestigatedByEmployeeId = updatedReport.InvestigatedByEmployeeId;
+                                originalReport.VerifiedByEmployeeId = updatedReport.VerifiedByEmployeeId;
+                                originalReport.NotedByEmployeeId = updatedReport.NotedByEmployeeId;
+                            }
+
+                            ViewBag.Employees = new SelectList(_context.Employees, "Id", "Name", originalReport.ReceivedByEmployeeId);
+                            return View(originalReport);
+                        }
+
+                        // Fallback (kung wala ang original dahil sa error)
                         ViewBag.Employees = new SelectList(_context.Employees, "Id", "Name", updatedReport.ReceivedByEmployeeId);
                         return View(updatedReport);
                     }
-                    // ====================================================================
 
+                    // --- 2. Update scalar fields ---
+                    existing.Item = updatedReport.Item;
+                    existing.FixedAssetCode = updatedReport.FixedAssetCode;
+                    existing.DatePurchased = updatedReport.DatePurchased;
+                    existing.BrandSize = updatedReport.BrandSize;
+                    existing.LocationUser = updatedReport.LocationUser;
+                    existing.SerialNumber = updatedReport.SerialNumber;
+                    existing.Color = updatedReport.Color;
+                    existing.IncidentDateTime = updatedReport.IncidentDateTime;
+                    existing.CauseOfDamage = updatedReport.CauseOfDamage;
+                    existing.ImmediateAction = updatedReport.ImmediateAction;
+                    existing.RecommendedAction = updatedReport.RecommendedAction;
+                    existing.ReceivedByEmployeeId = updatedReport.ReceivedByEmployeeId;
+                    existing.ReceivedDateTime = updatedReport.ReceivedDateTime;
+                    existing.UpdatedAt = DateTime.Now;
+
+                    if (isGad)
+                    {
+                        existing.Findings = updatedReport.Findings;
+                        existing.Recommendation = updatedReport.Recommendation;
+                        existing.NegligenceFlag = updatedReport.NegligenceFlag;
+                        existing.NegligenceDetails = updatedReport.NegligenceDetails;
+                        existing.Remarks = updatedReport.Remarks;
+                        existing.AdministrativeDiscipline = updatedReport.AdministrativeDiscipline;
+                        existing.InvestigatedByEmployeeId = updatedReport.InvestigatedByEmployeeId;
+                        existing.VerifiedByEmployeeId = updatedReport.VerifiedByEmployeeId;
+                        existing.NotedByEmployeeId = updatedReport.NotedByEmployeeId;
+                    }
+
+                    await _context.SaveChangesAsync();   // <-- nandito na yung save ng scalar changes
+
+                    
                     // --- 3. Upload folder (ensure exists) ---
                     var uploadsFolder = GetUploadsFolder();
                     if (!Directory.Exists(uploadsFolder))

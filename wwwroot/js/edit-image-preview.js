@@ -13,11 +13,13 @@ function createPreviewCardForEdit(file, containerId, index, part) {
                 <img src="${e.target.result}" alt="Preview" />
                 <div class="card-body">
                     <small>${escapeHtml(file.name)}</small><br />
-                    <span class="remove-preview-btn" style="cursor:pointer; color:red;">Remove</span>
+                    <span class="remove-preview-btn" style="cursor:pointer; color:red; display:inline-block; margin-top:5px;">Remove</span>
                 </div>
             </div>
         `;
-        cardDiv.querySelector('.remove-preview-btn').addEventListener('click', function () {
+        const removeBtn = cardDiv.querySelector('.remove-preview-btn');
+        removeBtn.addEventListener('click', function (event) {
+            event.stopPropagation();
             if (part === 'I') {
                 selectedFilesPartI.splice(index, 1);
                 rebuildInputAndPreviews('partIimages', 'edit-partI-images-preview', selectedFilesPartI, 'I');
@@ -39,6 +41,7 @@ function rebuildInputAndPreviews(inputId, containerId, fileArray, part) {
     document.getElementById(inputId).files = dataTransfer.files;
 
     const container = document.getElementById(containerId);
+    if (!container) return;
     container.innerHTML = '';
     for (let i = 0; i < fileArray.length; i++) {
         createPreviewCardForEdit(fileArray[i], containerId, i, part);
@@ -60,22 +63,56 @@ function escapeHtml(str) {
 }
 
 $(document).ready(function () {
-    $('#uploadCardPartI').on('click', function () {
-        $('#partIimages').click();
-    });
-    $('#uploadCardPartII').on('click', function () {
-        $('#partIIimages').click();
-    });
+    // Upload cards
+    $('#uploadCardPartI').on('click', function () { $('#partIimages').click(); });
+    $('#uploadCardPartII').on('click', function () { $('#partIIimages').click(); });
 
+    // New file selections
     $('#partIimages').on('change', function (e) {
         const newFiles = Array.from(e.target.files);
         selectedFilesPartI = selectedFilesPartI.concat(newFiles);
         rebuildInputAndPreviews('partIimages', 'edit-partI-images-preview', selectedFilesPartI, 'I');
     });
-
     $('#partIIimages').on('change', function (e) {
         const newFiles = Array.from(e.target.files);
         selectedFilesPartII = selectedFilesPartII.concat(newFiles);
         rebuildInputAndPreviews('partIIimages', 'edit-partII-images-preview', selectedFilesPartII, 'II');
     });
+
+    // Handle removal of existing images (from database) using event delegation
+    $(document).on('click', '.remove-existing-btn', function (e) {
+        e.preventDefault();
+        var $imageDiv = $(this).closest('.existing-image-item');
+        var imageId = $imageDiv.data('image-id');
+        console.log('Remove clicked, imageId:', imageId);  // <-- Ilagay dito
+        if (imageId) {
+            // Add hidden field for deletion
+            $('<input>').attr({
+                type: 'hidden',
+                name: 'deleteImageIds',
+                value: imageId
+            }).appendTo('form');
+            // Remove the image div from UI
+            $imageDiv.remove();
+        } else {
+            // Fallback in case the structure is different (e.g., checkbox)
+            var checkbox = $imageDiv.find('input[type="checkbox"]');
+            if (checkbox.length) {
+                checkbox.prop('checked', true);
+                $imageDiv.hide();
+            }
+        }
+    });
 });
+
+function removeExistingImage(spanElement, imageId) {
+    if (confirm('Remove this image?')) {
+        var $imageDiv = $(spanElement).closest('.existing-image-item');
+        $imageDiv.remove();
+        $('<input>').attr({
+            type: 'hidden',
+            name: 'deleteImageIds',
+            value: imageId
+        }).appendTo('form');
+    }
+}

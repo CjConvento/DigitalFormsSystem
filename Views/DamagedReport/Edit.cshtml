@@ -7,6 +7,22 @@
 
 <h1>Edit Damaged Report</h1>
 
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="alert alert-danger">
+        <strong>Detailed errors:</strong>
+        <ul>
+            @foreach (var key in ViewData.ModelState.Keys)
+            {
+                foreach (var error in ViewData.ModelState[key].Errors)
+                {
+                    <li>@key: @error.ErrorMessage</li>
+                }
+            }
+        </ul>
+    </div>
+}
+
 <form asp-action="Edit" method="post" enctype="multipart/form-data">
     <input type="hidden" asp-for="Id" />
     <div asp-validation-summary="ModelOnly" class="text-danger"></div>
@@ -33,22 +49,19 @@
         @Html.ValidationMessage("partIimages", new { @class = "text-danger" })
         <div id="edit-partI-images-preview" class="row mt-2"></div>
 
-        <!-- Existing images (with delete checkboxes) -->
+        <!-- Existing images (with delete and preview) -->
         @if (Model.Images != null && Model.Images.Any(i => i.Section == "PartI"))
         {
             <div class="mt-3">
                 <label>Current Item Pictures:</label>
-                <div class="row">
+                <div class="row" id="existingPartIContainer">
                     @foreach (var img in Model.Images.Where(i => i.Section == "PartI"))
                     {
-                        <div class="col-md-3 mb-2">
-                            <div class="card">
+                        <div class="col-md-3 mb-2 existing-image-item" data-image-id="@img.Id">
+                            <div class="image-preview-card">
                                 <img src="@img.FilePath" class="card-img-top" style="max-height:120px; object-fit:cover;" />
                                 <div class="card-body p-1 text-center">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="deleteImageIds" value="@img.Id" id="delete_@img.Id">
-                                        <label class="form-check-label" for="delete_@img.Id">Remove</label>
-                                    </div>
+                                    <span class="remove-existing-btn" style="cursor:pointer; color:red; display:inline-block;">Remove</span>
                                 </div>
                             </div>
                         </div>
@@ -108,22 +121,19 @@
         @Html.ValidationMessage("partIIimages", new { @class = "text-danger" })
         <div id="edit-partII-images-preview" class="row mt-2"></div>
 
-        <!-- Existing incident images (with delete checkboxes) -->
+        <!-- Existing images (with delete and preview) -->
         @if (Model.Images != null && Model.Images.Any(i => i.Section == "PartII"))
         {
             <div class="mt-3">
-                <label>Current Incident Pictures:</label>
-                <div class="row">
+                <label>Current Item Pictures:</label>
+                <div class="row" id="existingPartIIContainer">
                     @foreach (var img in Model.Images.Where(i => i.Section == "PartII"))
                     {
-                        <div class="col-md-3 mb-2">
-                            <div class="card">
+                        <div class="col-md-3 mb-2 existing-image-item" data-image-id="@img.Id">
+                            <div class="image-preview-card">
                                 <img src="@img.FilePath" class="card-img-top" style="max-height:120px; object-fit:cover;" />
                                 <div class="card-body p-1 text-center">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="deleteImageIds" value="@img.Id" id="del_@img.Id">
-                                        <label class="form-check-label" for="del_@img.Id">Remove</label>
-                                    </div>
+                                    <span class="remove-existing-btn" style="cursor:pointer; color:red; display:inline-block;">Remove</span>
                                 </div>
                             </div>
                         </div>
@@ -135,9 +145,21 @@
         <!-- Original text fields (unchanged, but moved after the image area) -->
         <div class="row mt-4">
             <div class="col-md-6">
+                <!-- INCIDENT -->
                 <div class="form-group">
                     <label asp-for="IncidentDateTime" class="control-label"></label>
-                    <input asp-for="IncidentDateTime" class="form-control" type="datetime-local" />
+                    <div class="row">
+                        <div class="col-md-6">
+                            <input type="text" id="IncidentDate" class="form-control" placeholder="Petsa" readonly
+                                   value="@(Model.IncidentDateTime?.ToString("yyyy-MM-dd"))">
+                        </div>
+                        <div class="col-md-6">
+                            <input type="text" id="IncidentTime" class="form-control" placeholder="Oras" readonly
+                                   value="@(Model.IncidentDateTime?.ToString("hh:mm tt"))">
+                        </div>
+                    </div>
+                    <input type="hidden" asp-for="IncidentDateTime" />
+                    <span asp-validation-for="IncidentDateTime" class="text-danger"></span>
                 </div>
                 <div class="form-group">
                     <label asp-for="CauseOfDamage" class="control-label"></label>
@@ -165,9 +187,21 @@
                         <option value="">-- Select --</option>
                     </select>
                 </div>
+                <!-- RECEIVED -->
                 <div class="form-group">
                     <label asp-for="ReceivedDateTime" class="control-label">Received date/time</label>
-                    <input asp-for="ReceivedDateTime" class="form-control" type="datetime-local" />
+                    <div class="row">
+                        <div class="col-md-6">
+                            <input type="text" id="ReceivedDate" class="form-control" placeholder="Petsa" readonly
+                                   value="@(Model.ReceivedDateTime?.ToString("yyyy-MM-dd"))">
+                        </div>
+                        <div class="col-md-6">
+                            <input type="text" id="ReceivedTime" class="form-control" placeholder="Oras" readonly
+                                   value="@(Model.ReceivedDateTime?.ToString("hh:mm tt"))">
+                        </div>
+                    </div>
+                    <input type="hidden" asp-for="ReceivedDateTime" />
+                    <span asp-validation-for="ReceivedDateTime" class="text-danger"></span>
                 </div>
             </div>
         </div>
@@ -249,4 +283,5 @@
     <partial name="_ValidationScriptsPartial" />
     <script src="~/js/edit-image-preview.js"></script>
     <script src="~/js/edit-formdatetime.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 }
