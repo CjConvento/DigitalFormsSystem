@@ -62,6 +62,46 @@ function escapeHtml(str) {
     });
 }
 
+// Edit version: drag and drop
+function setupDragAndDrop(uploadCardId, fileInputId, previewContainerId, part) {
+    var $card = $(uploadCardId);
+
+    $card.on('dragover', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        $(this).addClass('drag-over');
+    });
+
+    $card.on('dragleave', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        $(this).removeClass('drag-over');
+    });
+
+    $card.on('drop', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        $(this).removeClass('drag-over');
+
+        var files = e.originalEvent.dataTransfer.files;
+        if (files && files.length) {
+            var imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
+            if (imageFiles.length) {
+                if (part === 'I') {
+                    selectedFilesPartI = selectedFilesPartI.concat(imageFiles);
+                    rebuildInputAndPreviews(fileInputId, previewContainerId, selectedFilesPartI, 'I');
+                } else {
+                    selectedFilesPartII = selectedFilesPartII.concat(imageFiles);
+                    rebuildInputAndPreviews(fileInputId, previewContainerId, selectedFilesPartII, 'II');
+                }
+            } else {
+                alert('Please drop image files only (jpg, png, gif, etc.)');
+            }
+        }
+        return false;
+    });
+}
+
 $(document).ready(function () {
     // Upload cards
     $('#uploadCardPartI').on('click', function () { $('#partIimages').click(); });
@@ -103,6 +143,10 @@ $(document).ready(function () {
             }
         }
     });
+
+    // Drag and drop setup
+    setupDragAndDrop('#uploadCardPartI', 'partIimages', 'edit-partI-images-preview', 'I');
+    setupDragAndDrop('#uploadCardPartII', 'partIIimages', 'edit-partII-images-preview', 'II');
 });
 
 function removeExistingImage(spanElement, imageId) {

@@ -414,8 +414,15 @@ input:-webkit-autofill:active {
     display: inline-block;
 }
 
+/* Drag and drop highlight */
+.upload-card.drag-over {
+    background-color: #e0e7ff;
+    border-color: #3b82f6;
+    border-style: solid;
+}
 
-/* Modern upload card */
+
+/* upload card */
 .upload-card {
     border: 2px dashed #dee2e6;
     border-radius: 12px;
