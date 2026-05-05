@@ -70,7 +70,7 @@
                 @foreach (var img in Model.Images.Where(i => i.Section == "PartI"))
                 {
                     <div class="col-md-3">
-                        <img src="@img.FilePath" class="img-thumbnail" style="max-height:150px;" />
+                        <img src="@img.FilePath" class="img-thumbnail clickable-image" style="max-height:150px; cursor:pointer;" data-fullsrc="@img.FilePath" data-filename="@img.FileName" />
                         <div>@img.FileName</div>
                     </div>
                 }
@@ -85,15 +85,40 @@
                 @foreach (var img in Model.Images.Where(i => i.Section == "PartII"))
                 {
                     <div class="col-md-3 mb-2">
-                        <img src="@img.FilePath" class="img-thumbnail" style="max-height:150px;" />
+                        <img src="@img.FilePath" class="img-thumbnail clickable-image" style="max-height:150px; cursor:pointer;" data-fullsrc="@img.FilePath" data-filename="@img.FileName" />
                         <div>@img.FileName</div>
                     </div>
                 }
             </div>
         }
     </div>
+
     <div class="card-footer">
         <a asp-action="Print" asp-route-id="@Model.Id" class="btn btn-secondary" target="_blank">Print</a>
         <a asp-action="Index" class="btn btn-primary">Back to List</a>
     </div>
+
 </div>
+
+
+<!-- Modal for image preview -->
+<div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="imageModalLabel">Image Preview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="modalImage" src="" alt="Full size image" style="max-width:100%; max-height:80vh;" />
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/details-imagedialog.js"></script>
+}
