@@ -62,6 +62,45 @@ function escapeHtml(str) {
     });
 }
 
+function setupDragAndDrop(uploadCardId, fileInputId, previewContainerId, part) {
+    var $card = $(uploadCardId);
+
+    $card.on('dragover', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        $(this).addClass('drag-over');
+    });
+
+    $card.on('dragleave', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        $(this).removeClass('drag-over');
+    });
+
+    $card.on('drop', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        $(this).removeClass('drag-over');
+
+        var files = e.originalEvent.dataTransfer.files;
+        if (files && files.length) {
+            var imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
+            if (imageFiles.length) {
+                if (part === 'I') {
+                    selectedFilesPartI = selectedFilesPartI.concat(imageFiles);
+                    rebuildInputAndPreviews(fileInputId, previewContainerId, selectedFilesPartI, 'I');
+                } else {
+                    selectedFilesPartII = selectedFilesPartII.concat(imageFiles);
+                    rebuildInputAndPreviews(fileInputId, previewContainerId, selectedFilesPartII, 'II');
+                }
+            } else {
+                alert('Please drop image files only (jpg, png, gif, etc.)');
+            }
+        }
+        return false;
+    });
+}
+
 $(document).ready(function () {
     // Card click triggers hidden file input
     $('#uploadCardPartI').on('click', function () {
@@ -85,4 +124,8 @@ $(document).ready(function () {
         selectedFilesPartII = selectedFilesPartII.concat(newFiles);
         rebuildInputAndPreviews('partIIimages', 'partII-images-preview', selectedFilesPartII, 'II');
     });
+
+    // Drag and drop setup
+    setupDragAndDrop('#uploadCardPartI', 'partIimages', 'partI-images-preview', 'I');
+    setupDragAndDrop('#uploadCardPartII', 'partIIimages', 'partII-images-preview', 'II');
 });
