@@ -1,19 +1,23 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Http;
+using DigitalFormsSystem.Core.Interfaces;
 
-namespace DigitalFormsSystem.Controllers
+namespace DigitalFormsSystem.Web.Controllers
 {
     public class HomeController : Controller
     {
+        private readonly ICurrentUserService _currentUserService;
+
+        public HomeController(ICurrentUserService currentUserService)
+        {
+            _currentUserService = currentUserService;
+        }
+
         public IActionResult Index()
         {
-            // Check if user is logged in
-            var empId = HttpContext.Session.GetInt32("EmployeeId");
-            if (empId == null)
+            if (!_currentUserService.IsAuthenticated)
                 return RedirectToAction("Login", "Account");
 
             return View();
         }
-
     }
 }

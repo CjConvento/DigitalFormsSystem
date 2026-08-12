@@ -1,23 +1,23 @@
 ﻿using DigitalFormsSystem.Models;
+using DigitalFormsSystem.Core.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
-namespace DigitalFormsSystem.Controllers
+namespace DigitalFormsSystem.Web.Controllers
 {
     public class AccountController : Controller
     {
         private readonly DigitalFormsSystemContext _context;
+        private readonly ICurrentUserService _currentUserService;
 
-        public AccountController(DigitalFormsSystemContext context)
+        public AccountController(DigitalFormsSystemContext context, ICurrentUserService currentUserService)
         {
             _context = context;
+            _currentUserService = currentUserService;
         }
 
         [HttpGet]
-        public IActionResult Login()
-        {
-            return View();
-        }
+        public IActionResult Login() => View();
 
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -30,18 +30,18 @@ namespace DigitalFormsSystem.Controllers
 
                 if (employee != null)
                 {
-                    // password
                     if (model.Password != "hstpass")
                     {
                         ModelState.AddModelError("", "Invalid password.");
                         return View(model);
                     }
 
-                    HttpContext.Session.SetInt32("EmployeeId", employee.Id);
-                    HttpContext.Session.SetString("EmployeeName", employee.Name);
-                    HttpContext.Session.SetString("EmployeeNo", employee.EmployeeNo);
-                    // ADD THIS LINE:
-                    HttpContext.Session.SetString("EmployeeDepartment", employee.Department ?? "");
+                    _currentUserService.SignIn(
+                        employee.Id,
+                        employee.Name,
+                        employee.EmployeeNo,
+                        employee.Department ?? ""
+                    );
 
                     return RedirectToAction("Index", "Home");
                 }
@@ -55,7 +55,7 @@ namespace DigitalFormsSystem.Controllers
 
         public IActionResult Logout()
         {
-            HttpContext.Session.Clear();
+            _currentUserService.SignOut();
             return RedirectToAction("Login");
         }
     }

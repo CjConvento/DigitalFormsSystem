@@ -1,4 +1,5 @@
 ﻿using DigitalFormsSystem.Models;
+using DigitalFormsSystem.Core.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -9,19 +10,21 @@ namespace DigitalFormsSystem.Controllers
     public class FixedAssetController : Controller
     {
         private readonly DigitalFormsSystemContext _context;
+        private readonly ICurrentUserService _currentUserService;
 
-        public FixedAssetController(DigitalFormsSystemContext context)
+        public FixedAssetController(DigitalFormsSystemContext context, ICurrentUserService currentUserService)
         {
             _context = context;
+            _currentUserService = currentUserService;
         }
 
         public async Task<IActionResult> Index()
         {
-            var empId = HttpContext.Session.GetInt32("EmployeeId");
-            if (empId == null) return RedirectToAction("Login", "Account");
+            if (!_currentUserService.IsAuthenticated) return RedirectToAction("Login", "Account");
+            var empId = _currentUserService.EmployeeId!.Value;
 
             var requests = await _context.FixedAssetRequests
-                .Where(r => r.RequestedByEmployeeId == empId.Value)   // ← only the current user's requests
+                .Where(r => r.RequestedByEmployeeId == empId)   // ← only the current user's requests
                 .Include(r => r.RequestedByEmployee)
                 .OrderByDescending(r => r.DateRequested)
                 .ToListAsync();
@@ -30,8 +33,7 @@ namespace DigitalFormsSystem.Controllers
 
         public async Task<IActionResult> Details(int id)
         {
-            var empId = HttpContext.Session.GetInt32("EmployeeId");
-            if (empId == null) return RedirectToAction("Login", "Account");
+            if (!_currentUserService.IsAuthenticated) return RedirectToAction("Login", "Account");
 
             var request = await _context.FixedAssetRequests
                 .Include(r => r.RequestedByEmployee)
@@ -45,8 +47,7 @@ namespace DigitalFormsSystem.Controllers
         // GET: FixedAsset/Edit/5
         public async Task<IActionResult> Edit(int id)
         {
-            var empId = HttpContext.Session.GetInt32("EmployeeId");
-            if (empId == null) return RedirectToAction("Login", "Account");
+            if (!_currentUserService.IsAuthenticated) return RedirectToAction("Login", "Account");
 
             var request = await _context.FixedAssetRequests
                 .Include(r => r.ExistingUnitDetails)
@@ -69,8 +70,7 @@ namespace DigitalFormsSystem.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, FixedAssetRequest updatedRequest)
         {
-            var empId = HttpContext.Session.GetInt32("EmployeeId");
-            if (empId == null) return RedirectToAction("Login", "Account");
+            if (!_currentUserService.IsAuthenticated) return RedirectToAction("Login", "Account");
 
             if (id != updatedRequest.Id) return NotFound();
 
@@ -175,8 +175,7 @@ namespace DigitalFormsSystem.Controllers
         public async Task<IActionResult> Delete(int id)
         {
             Console.WriteLine($"[DELETE GET] Called with id = {id}");
-            var empId = HttpContext.Session.GetInt32("EmployeeId");
-            if (empId == null)
+            if (!_currentUserService.IsAuthenticated)
             {
                 Console.WriteLine("[DELETE GET] No session, redirecting to login.");
                 return RedirectToAction("Login", "Account");
@@ -218,8 +217,7 @@ namespace DigitalFormsSystem.Controllers
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             Console.WriteLine($"[DELETE POST] Called with id = {id}");
-            var empId = HttpContext.Session.GetInt32("EmployeeId");
-            if (empId == null)
+            if (!_currentUserService.IsAuthenticated)
             {
                 Console.WriteLine("[DELETE POST] No session, redirecting to login.");
                 return RedirectToAction("Login", "Account");
@@ -274,8 +272,7 @@ namespace DigitalFormsSystem.Controllers
 
         public IActionResult Create()
         {
-            var empId = HttpContext.Session.GetInt32("EmployeeId");
-            if (empId == null) return RedirectToAction("Login", "Account");
+            if (!_currentUserService.IsAuthenticated) return RedirectToAction("Login", "Account");
 
             return View();
         }
@@ -284,12 +281,12 @@ namespace DigitalFormsSystem.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(FixedAssetRequest request)
         {
-            var empId = HttpContext.Session.GetInt32("EmployeeId");
-            if (empId == null) return RedirectToAction("Login", "Account");
+            if (!_currentUserService.IsAuthenticated) return RedirectToAction("Login", "Account");
+            var empId = _currentUserService.EmployeeId!.Value;
 
             // Set foreign key and name BEFORE validation
-            request.RequestedByEmployeeId = empId.Value;
-            request.RequestedByName = HttpContext.Session.GetString("EmployeeName");
+            request.RequestedByEmployeeId = empId;
+            request.RequestedByName = _currentUserService.EmployeeName;
 
             // Manual parsing of TargetDateNeeded
             var targetDateStr = Request.Form["TargetDateNeeded"].ToString();
@@ -360,9 +357,9 @@ namespace DigitalFormsSystem.Controllers
                     try
                     {
                         if (attempt > 1)
-                            request.ControlNo = GenerateControlNo(empId.Value, attempt - 1);
+                            request.ControlNo = GenerateControlNo(empId, attempt - 1);
                         else
-                            request.ControlNo = GenerateControlNo(empId.Value);
+                            request.ControlNo = GenerateControlNo(empId);
 
                         _context.Add(request);
                         await _context.SaveChangesAsync();
@@ -397,15 +394,15 @@ namespace DigitalFormsSystem.Controllers
 
         public async Task<IActionResult> Print(int id)
         {
-            var empId = HttpContext.Session.GetInt32("EmployeeId");
-            if (empId == null) return RedirectToAction("Login", "Account");
+            if (!_currentUserService.IsAuthenticated) return RedirectToAction("Login", "Account");
+            var empId = _currentUserService.EmployeeId!.Value;
 
             // Optional: stored procedure logging
             try
             {
                 await _context.Database.ExecuteSqlRawAsync(
                     "EXEC sp_PrintFixedAssetRequest @RequestID={0}, @PrintedByEmployeeID={1}",
-                    id, empId.Value);
+                    id, empId);
             }
             catch { }
 
