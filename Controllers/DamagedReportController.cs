@@ -1,4 +1,5 @@
 ﻿using DigitalFormsSystem.Models;
+using DigitalFormsSystem.Core.Interfaces;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -19,19 +20,21 @@ namespace DigitalFormsSystem.Controllers
         private readonly DigitalFormsSystemContext _context;
         private readonly IWebHostEnvironment _env;
         private readonly IConfiguration _config;
+        private readonly ICurrentUserService _currentUserService;
 
-        public DamagedReportController(DigitalFormsSystemContext context, IWebHostEnvironment env, IConfiguration config)
+        public DamagedReportController(DigitalFormsSystemContext context, IWebHostEnvironment env, IConfiguration config, ICurrentUserService currentUserService)
         {
             _context = context;
             _env = env;
             _config = config;
+            _currentUserService = currentUserService;
         }
 
         // GET: DamagedReport
         public async Task<IActionResult> Index()
         {
-            var empId = HttpContext.Session.GetInt32("EmployeeId");
-            if (empId == null) return RedirectToAction("Login", "Account");
+            if (!_currentUserService.IsAuthenticated) return RedirectToAction("Login", "Account");
+            var empId = _currentUserService.EmployeeId!.Value;
 
             var reports = await _context.DamagedReports
                 .Include(r => r.ReportedByEmployee)
@@ -44,13 +47,12 @@ namespace DigitalFormsSystem.Controllers
         // GET: DamagedReport/Details/5
         public async Task<IActionResult> Details(int id)
         {
-            var empId = HttpContext.Session.GetInt32("EmployeeId");
-            if (empId == null) return RedirectToAction("Login", "Account");
+            if (!_currentUserService.IsAuthenticated) return RedirectToAction("Login", "Account");
 
             var report = await _context.DamagedReports
                 .Include(r => r.ReportedByEmployee)
                 .Include(r => r.ReceivedByEmployee)
-                .Include(r => r.Images) // include images
+                .Include(r => r.Images)
                 .FirstOrDefaultAsync(r => r.Id == id);
             if (report == null) return NotFound();
             return View(report);
@@ -59,8 +61,7 @@ namespace DigitalFormsSystem.Controllers
         // GET: DamagedReport/Create
         public IActionResult Create()
         {
-            var empId = HttpContext.Session.GetInt32("EmployeeId");
-            if (empId == null) return RedirectToAction("Login", "Account");
+            if (!_currentUserService.IsAuthenticated) return RedirectToAction("Login", "Account");
 
             ViewBag.Employees = new SelectList(_context.Employees, "Id", "Name");
             return View();
@@ -71,11 +72,11 @@ namespace DigitalFormsSystem.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(DamagedReport report, List<IFormFile> partIimages, List<IFormFile> partIIimages)
         {
-            var empId = HttpContext.Session.GetInt32("EmployeeId");
-            if (empId == null) return RedirectToAction("Login", "Account");
+            if (!_currentUserService.IsAuthenticated) return RedirectToAction("Login", "Account");
+            var empId = _currentUserService.EmployeeId!.Value;
 
             // Auto-set fields (but don't save yet)
-            report.ReportedByEmployeeId = empId.Value;
+            report.ReportedByEmployeeId = empId;
             report.ControlNo = GenerateControlNo();
             report.CreatedAt = DateTime.Now;
             report.UpdatedAt = DateTime.Now;
@@ -112,12 +113,10 @@ namespace DigitalFormsSystem.Controllers
 
             // IncidentDateTime (DateTime?)
             var incidentDateTimeStr = Request.Form["IncidentDateTime"].ToString();
-            // Log the raw value to the Output window (View → Output in VS)
             Console.WriteLine($"IncidentDateTime raw: '{incidentDateTimeStr}'");
 
             if (!string.IsNullOrWhiteSpace(incidentDateTimeStr))
             {
-                // Try multiple common formats
                 var formats = new[] { "yyyy-MM-ddTHH:mm", "yyyy-MM-ddTHH:mm:ss", "yyyy-MM-ddTHH:mm:ss.fff" };
                 if (DateTime.TryParseExact(incidentDateTimeStr, formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out var incidentDateTime))
                     report.IncidentDateTime = incidentDateTime;
@@ -152,7 +151,7 @@ namespace DigitalFormsSystem.Controllers
             // ========================================
 
             // GAD-only: clear Part IV fields for non-GAD
-            var isGad = HttpContext.Session.GetString("EmployeeDepartment") == "GAD";
+            var isGad = _currentUserService.EmployeeDepartment == "GAD";
             if (!isGad)
             {
                 report.Findings = null;
@@ -274,8 +273,7 @@ namespace DigitalFormsSystem.Controllers
         // GET: DamagedReport/Edit/5
         public async Task<IActionResult> Edit(int id)
         {
-            var empId = HttpContext.Session.GetInt32("EmployeeId");
-            if (empId == null) return RedirectToAction("Login", "Account");
+            if (!_currentUserService.IsAuthenticated) return RedirectToAction("Login", "Account");
 
             var report = await _context.DamagedReports
                 .Include(r => r.Images)
@@ -295,8 +293,7 @@ namespace DigitalFormsSystem.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, DamagedReport updatedReport, List<IFormFile> partIimages, List<IFormFile> partIIimages, List<int> deleteImageIds)
         {
-            var empId = HttpContext.Session.GetInt32("EmployeeId");
-            if (empId == null) return RedirectToAction("Login", "Account");
+            if (!_currentUserService.IsAuthenticated) return RedirectToAction("Login", "Account");
 
             if (id != updatedReport.Id) return NotFound();
 
@@ -326,8 +323,7 @@ namespace DigitalFormsSystem.Controllers
                         return RedirectToAction(nameof(Index));
                     }
 
-                    var isGad = HttpContext.Session.GetString("EmployeeDepartment") == "GAD";
-
+                    var isGad = _currentUserService.EmployeeDepartment == "GAD";
 
                     // --- 1. Delete selected images (works for both sections) ---
                     if (deleteImageIds != null && deleteImageIds.Any())
@@ -377,7 +373,6 @@ namespace DigitalFormsSystem.Controllers
 
                         if (originalReport != null)
                         {
-                            // I-copy ang text field changes (scalar) mula updatedReport patungo sa originalReport
                             originalReport.Item = updatedReport.Item;
                             originalReport.FixedAssetCode = updatedReport.FixedAssetCode;
                             originalReport.DatePurchased = updatedReport.DatePurchased;
@@ -392,7 +387,6 @@ namespace DigitalFormsSystem.Controllers
                             originalReport.ReceivedByEmployeeId = updatedReport.ReceivedByEmployeeId;
                             originalReport.ReceivedDateTime = updatedReport.ReceivedDateTime;
 
-                            // Kung GAD, kopyahin din ang Part IV fields (opsyonal)
                             if (isGad)
                             {
                                 originalReport.Findings = updatedReport.Findings;
@@ -410,7 +404,6 @@ namespace DigitalFormsSystem.Controllers
                             return View(originalReport);
                         }
 
-                        // Fallback (kung wala ang original dahil sa error)
                         ViewBag.Employees = new SelectList(_context.Employees, "Id", "Name", updatedReport.ReceivedByEmployeeId);
                         return View(updatedReport);
                     }
@@ -444,9 +437,8 @@ namespace DigitalFormsSystem.Controllers
                         existing.NotedByEmployeeId = updatedReport.NotedByEmployeeId;
                     }
 
-                    await _context.SaveChangesAsync();   // <-- nandito na yung save ng scalar changes
+                    await _context.SaveChangesAsync();
 
-                    
                     // --- 3. Upload folder (ensure exists) ---
                     var uploadsFolder = GetUploadsFolder();
                     if (!Directory.Exists(uploadsFolder))
@@ -525,8 +517,7 @@ namespace DigitalFormsSystem.Controllers
         // GET: DamagedReport/Delete/5
         public async Task<IActionResult> Delete(int id)
         {
-            var empId = HttpContext.Session.GetInt32("EmployeeId");
-            if (empId == null) return RedirectToAction("Login", "Account");
+            if (!_currentUserService.IsAuthenticated) return RedirectToAction("Login", "Account");
 
             var report = await _context.DamagedReports.FindAsync(id);
             if (report == null) return NotFound();
@@ -543,8 +534,7 @@ namespace DigitalFormsSystem.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var empId = HttpContext.Session.GetInt32("EmployeeId");
-            if (empId == null) return RedirectToAction("Login", "Account");
+            if (!_currentUserService.IsAuthenticated) return RedirectToAction("Login", "Account");
 
             var report = await _context.DamagedReports
                 .Include(r => r.Images)
@@ -570,19 +560,17 @@ namespace DigitalFormsSystem.Controllers
         // GET: DamagedReport/Print/5
         public async Task<IActionResult> Print(int id)
         {
-            var empId = HttpContext.Session.GetInt32("EmployeeId");
-            if (empId == null) return RedirectToAction("Login", "Account");
+            if (!_currentUserService.IsAuthenticated) return RedirectToAction("Login", "Account");
 
             var report = await _context.DamagedReports
                 .Include(r => r.ReportedByEmployee)
                 .Include(r => r.ReceivedByEmployee)
-                .Include(r => r.Images)  // ✅ siguradong kasama ang mga larawan
-                .AsNoTracking()          // optional: basahin lang, hindi na kailangan i-save
+                .Include(r => r.Images)
+                .AsNoTracking()
                 .FirstOrDefaultAsync(r => r.Id == id);
 
             if (report == null) return NotFound();
 
-            // Siguraduhing ang Images ay hindi null (kung walang laman, gawing empty list)
             if (report.Images == null)
                 report.Images = new List<DamagedReportImage>();
 
@@ -616,7 +604,6 @@ namespace DigitalFormsSystem.Controllers
 
             string newControlNo = $"{prefix}{nextNumber:D3}";
 
-            // Avoid race condition: check again if the generated number already exists
             bool alreadyExists = _context.DamagedReports.Any(r => r.ControlNo == newControlNo);
             if (alreadyExists)
             {
@@ -629,14 +616,12 @@ namespace DigitalFormsSystem.Controllers
         private bool IsValidImage(IFormFile file, out string errorMessage)
         {
             errorMessage = null;
-            // Read max file size from configuration; default to 5 MB if not set
             var maxSizeMB = _config.GetValue<int>("UploadSettings:MaxFileSizeMB", 5);
             if (file.Length > maxSizeMB * 1024 * 1024)
             {
                 errorMessage = $"File {file.FileName} exceeds {maxSizeMB} MB limit.";
                 return false;
             }
-            // Allowed extensions
             var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp" };
             var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
             if (!allowedExtensions.Contains(ext))
@@ -644,7 +629,6 @@ namespace DigitalFormsSystem.Controllers
                 errorMessage = $"File {file.FileName} has an invalid extension. Allowed: {string.Join(", ", allowedExtensions)}";
                 return false;
             }
-            // Allowed content types
             var allowedTypes = new[] { "image/jpeg", "image/png", "image/gif", "image/bmp" };
             if (!allowedTypes.Contains(file.ContentType.ToLowerInvariant()))
             {

@@ -22,6 +22,9 @@ try
         options.Cookie.IsEssential = true;
     });
 
+    builder.Services.AddHttpContextAccessor();
+    builder.Services.AddScoped<DigitalFormsSystem.Core.Interfaces.ICurrentUserService, DigitalFormsSystem.Services.SessionCurrentUserService>();
+
     var app = builder.Build();
 
     if (!app.Environment.IsDevelopment())
