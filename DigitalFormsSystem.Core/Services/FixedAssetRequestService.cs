@@ -133,11 +133,11 @@ namespace DigitalFormsSystem.Core.Services
             if (request == null) return false;
 
             // Remove child records
-            _context.ExistingUnitDetails.RemoveRange(request.ExistingUnitDetails);
-            _context.FixedAssetRequestApprovals.RemoveRange(request.FixedAssetRequestApprovals);
-            _context.MemorandumReceipts.RemoveRange(request.MemorandumReceipts);
-            _context.FixedAssetPrintLogs.RemoveRange(request.FixedAssetPrintLogs);
-            _context.RequestStatusHistories.RemoveRange(request.RequestStatusHistories);
+            _context.ExistingUnitDetails.RemoveRange(request.ExistingUnitDetails ?? new List<ExistingUnitDetail>());
+            _context.FixedAssetRequestApprovals.RemoveRange(request.FixedAssetRequestApprovals ?? new List<FixedAssetRequestApproval>());
+            _context.MemorandumReceipts.RemoveRange(request.MemorandumReceipts ?? new List<MemorandumReceipt>());
+            _context.FixedAssetPrintLogs.RemoveRange(request.FixedAssetPrintLogs ?? new List<FixedAssetPrintLog>());
+            _context.RequestStatusHistories.RemoveRange(request.RequestStatusHistories ?? new List<RequestStatusHistory>());
 
             _context.FixedAssetRequests.Remove(request);
             await _context.SaveChangesAsync();
