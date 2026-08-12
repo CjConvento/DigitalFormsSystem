@@ -18,4 +18,12 @@
     </PackageReference>
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="DigitalFormsSystem.Core\DigitalFormsSystem.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+  <Compile Remove="DigitalFormsSystem.Core\**" />
+  <EmbeddedResource Remove="DigitalFormsSystem.Core\**" />
+  <None Remove="DigitalFormsSystem.Core\**" />
+  </ItemGroup>
 </Project>
