@@ -1,5 +1,9 @@
 using DigitalFormsSystem.Models;
 using System.Threading;
+using DigitalFormsSystem.Core.Interfaces;
+using DigitalFormsSystem.Core.Services;     
+using DigitalFormsSystem.Services; 
+using DigitalFormsSystem.Web.Services;
 using Microsoft.EntityFrameworkCore;
 
 // now may auto deploy na
@@ -24,7 +28,9 @@ try
 
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddScoped<DigitalFormsSystem.Core.Interfaces.ICurrentUserService, DigitalFormsSystem.Services.SessionCurrentUserService>();
-
+    builder.Services.AddScoped<IFixedAssetRequestService, FixedAssetRequestService>();
+    builder.Services.AddScoped<IDamagedReportService, DamagedReportService>();
+    builder.Services.AddScoped<INotificationService, NotificationService>();
     var app = builder.Build();
 
     if (!app.Environment.IsDevelopment())

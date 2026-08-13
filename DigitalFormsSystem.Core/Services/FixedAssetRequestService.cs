@@ -7,10 +7,14 @@ namespace DigitalFormsSystem.Core.Services
     public class FixedAssetRequestService : IFixedAssetRequestService
     {
         private readonly DigitalFormsSystemContext _context;
+        private readonly INotificationService _notificationService;
 
-        public FixedAssetRequestService(DigitalFormsSystemContext context)
+        public FixedAssetRequestService(
+            DigitalFormsSystemContext context, 
+            INotificationService notificationService)
         {
             _context = context;
+            _notificationService = notificationService;
         }
 
         // ============ READ ============
@@ -56,6 +60,13 @@ namespace DigitalFormsSystem.Core.Services
                     request.ControlNo = GenerateControlNo(request.RequestedByEmployeeId);
                     _context.FixedAssetRequests.Add(request);
                     await _context.SaveChangesAsync();
+
+                    // After save
+                    await _notificationService.NotifyStatusChangeAsync(
+                        request.Id, 
+                        "Draft", 
+                        "Draft", 
+                        request.RequestedByEmployeeId);
 
                     // Save existing units if Additional
                     if (request.RequestType == "Additional" && existingUnits.Any())
@@ -116,6 +127,17 @@ namespace DigitalFormsSystem.Core.Services
             }
 
             await _context.SaveChangesAsync();
+
+            // After update, check if status changed
+            if (existing.RequestStatus != updatedRequest.RequestStatus)
+            {
+                await _notificationService.NotifyStatusChangeAsync(
+                    existing.Id,
+                    existing.RequestStatus ?? "Unknown",   
+                    updatedRequest.RequestStatus ?? "Unknown",  
+                    existing.RequestedByEmployeeId);
+            }
+
             return true;
         }
 
