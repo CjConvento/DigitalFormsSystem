@@ -1,59 +1,67 @@
 using DigitalFormsSystem.Models;
-using System.Threading;
 using DigitalFormsSystem.Core.Interfaces;
-using DigitalFormsSystem.Core.Services;     
-using DigitalFormsSystem.Services; 
-using DigitalFormsSystem.Web.Services;
 using Microsoft.EntityFrameworkCore;
+using System.Threading;
+using DigitalFormsSystem.Services;      // For SessionCurrentUserService
+using DigitalFormsSystem.Core.Services; // For FixedAssetRequestService
+using DigitalFormsSystem.Web.Services;  // For DamagedReportService, NotificationService
 
-// now may auto deploy na
-// Increase minimum thread pool size (optional, may help with thread starvation)
-ThreadPool.SetMinThreads(100, 100);
-
-try
+namespace DigitalFormsSystem.Web
 {
-    var builder = WebApplication.CreateBuilder(args);
-
-    builder.Services.AddControllersWithViews();
-    builder.Services.AddDbContext<DigitalFormsSystemContext>(options =>
-        options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
-
-    builder.Services.AddDistributedMemoryCache();
-    builder.Services.AddSession(options =>
+    public class Program
     {
-        options.IdleTimeout = TimeSpan.FromMinutes(30);
-        options.Cookie.HttpOnly = true;
-        options.Cookie.IsEssential = true;
-    });
+        public static void Main(string[] args)
+        {
+            ThreadPool.SetMinThreads(100, 100);
 
-    builder.Services.AddHttpContextAccessor();
-    builder.Services.AddScoped<DigitalFormsSystem.Core.Interfaces.ICurrentUserService, DigitalFormsSystem.Services.SessionCurrentUserService>();
-    builder.Services.AddScoped<IFixedAssetRequestService, FixedAssetRequestService>();
-    builder.Services.AddScoped<IDamagedReportService, DamagedReportService>();
-    builder.Services.AddScoped<INotificationService, NotificationService>();
-    var app = builder.Build();
+            try
+            {
+                var builder = WebApplication.CreateBuilder(args);
 
-    if (!app.Environment.IsDevelopment())
-    {
-        app.UseExceptionHandler("/Home/Error");
-        app.UseHsts();
+                builder.Services.AddControllersWithViews();
+                builder.Services.AddDbContext<DigitalFormsSystemContext>(options =>
+                    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+                builder.Services.AddDistributedMemoryCache();
+                builder.Services.AddSession(options =>
+                {
+                    options.IdleTimeout = TimeSpan.FromMinutes(30);
+                    options.Cookie.HttpOnly = true;
+                    options.Cookie.IsEssential = true;
+                });
+
+                builder.Services.AddHttpContextAccessor();
+                builder.Services.AddScoped<ICurrentUserService, SessionCurrentUserService>();
+                builder.Services.AddScoped<IFixedAssetRequestService, FixedAssetRequestService>();
+                builder.Services.AddScoped<IDamagedReportService, DamagedReportService>();
+                builder.Services.AddScoped<INotificationService, NotificationService>();
+
+                var app = builder.Build();
+
+                if (!app.Environment.IsDevelopment())
+                {
+                    app.UseExceptionHandler("/Home/Error");
+                    app.UseHsts();
+                }
+
+                app.UseHttpsRedirection();
+                app.UseStaticFiles();
+                app.UseRouting();
+                app.UseSession();
+                app.UseAuthorization();
+
+                app.MapControllerRoute(
+                    name: "default",
+                    pattern: "{controller=FixedAsset}/{action=Index}/{id?}");
+
+                app.Run();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("===== FATAL EXCEPTION =====");
+                Console.WriteLine(ex.ToString());
+                throw;
+            }
+        }
     }
-
-    app.UseHttpsRedirection();
-    app.UseStaticFiles();
-    app.UseRouting();
-    app.UseSession();
-    app.UseAuthorization();
-
-    app.MapControllerRoute(
-        name: "default",
-        pattern: "{controller=FixedAsset}/{action=Index}/{id?}");
-
-    app.Run();
-}
-catch (Exception ex)
-{
-    Console.WriteLine("===== FATAL EXCEPTION =====");
-    Console.WriteLine(ex.ToString());
-    throw;
 }

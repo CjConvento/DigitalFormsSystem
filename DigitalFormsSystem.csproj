@@ -4,6 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
 
   <ItemGroup>
@@ -27,4 +28,13 @@
   <EmbeddedResource Remove="DigitalFormsSystem.Core\**" />
   <None Remove="DigitalFormsSystem.Core\**" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="DigitalFormsSystem.Blazor\**" />
+    <EmbeddedResource Remove="DigitalFormsSystem.Blazor\**" />
+    <None Remove="DigitalFormsSystem.Blazor\**" />
+    <Content Remove="DigitalFormsSystem.Blazor\**" />
+  </ItemGroup>
+  
 </Project>
+
