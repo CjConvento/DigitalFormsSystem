@@ -2,6 +2,7 @@ using DigitalFormsSystem.Models;
 using DigitalFormsSystem.Core.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using System.Threading;
+using DigitalFormsSystem.Data;  
 using DigitalFormsSystem.Services;      // For SessionCurrentUserService
 using DigitalFormsSystem.Core.Services; // For FixedAssetRequestService
 using DigitalFormsSystem.Web.Services;  // For DamagedReportService, NotificationService
@@ -10,7 +11,7 @@ namespace DigitalFormsSystem.Web
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             ThreadPool.SetMinThreads(100, 100);
 
@@ -53,6 +54,13 @@ namespace DigitalFormsSystem.Web
                 app.MapControllerRoute(
                     name: "default",
                     pattern: "{controller=FixedAsset}/{action=Index}/{id?}");
+
+                // ⭐ SEED EMPLOYEE PASSWORDS
+                using (var scope = app.Services.CreateScope())
+                {
+                    var context = scope.ServiceProvider.GetRequiredService<DigitalFormsSystemContext>();
+                    await DbInitializer.SeedEmployeePasswords(context);
+                }
 
                 app.Run();
             }

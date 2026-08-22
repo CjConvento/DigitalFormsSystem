@@ -1,27 +1,131 @@
-﻿@{
+﻿@inject DigitalFormsSystem.Core.Interfaces.ICurrentUserService CurrentUserService
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
+
+@{
     ViewData["Title"] = "Dashboard";
+    var managerId = Configuration.GetValue<int>("AppSettings:ManagerEmployeeId");
+    var isManager = CurrentUserService.EmployeeId == managerId;
 }
 
-<h1 class="text-center">Digital Forms System</h1>
-<h4 class="text-center text-muted">Select a form to create or manage</h4>
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <h1>Welcome, @CurrentUserService.EmployeeName!</h1>
+            <hr />
+        </div>
+    </div>
 
-<div class="row mt-5">
-    <div class="col-md-6">
-        <div class="card text-center">
-            <div class="card-body">
-                <h5 class="card-title">Fixed Asset Request</h5>
-                <p class="card-text">Request new, additional, or replacement fixed assets.</p>
-                <a asp-controller="FixedAsset" asp-action="Index" class="btn btn-primary">Go to Fixed Asset Requests</a>
+    <!-- Stats Cards - Visible ONLY to Gilbert -->
+    @if (isManager)
+    {
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card text-white bg-primary">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Requests</h5>
+                        <p class="card-text display-4">@ViewBag.TotalRequests</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-success">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Reports</h5>
+                        <p class="card-text display-4">@ViewBag.TotalReports</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-warning">
+                    <div class="card-body">
+                        <h5 class="card-title">Pending (Draft)</h5>
+                        <p class="card-text display-4">@ViewBag.PendingCount</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-info">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Employees</h5>
+                        <p class="card-text display-4">@ViewBag.TotalEmployees</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Main Cards -->
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-file-alt"></i> Fixed Asset Requests
+                    </h5>
+                    <p class="card-text">
+                        @if (isManager)
+                        {
+                            <span>View and manage all fixed asset requests from all employees.</span>
+                        }
+                        else
+                        {
+                            <span>Request new, additional, or replacement fixed assets.</span>
+                        }
+                    </p>
+                    <a asp-controller="FixedAsset" asp-action="Index" class="btn btn-primary">
+                        <i class="fas fa-arrow-right"></i> 
+                        @(isManager ? "View All Requests" : "Go to Fixed Asset Requests")
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-tools"></i> Damaged Reports
+                    </h5>
+                    <p class="card-text">
+                        @if (isManager)
+                        {
+                            <span>View and manage all damaged reports from all employees.</span>
+                        }
+                        else
+                        {
+                            <span>Report damaged equipment, assets, or tools.</span>
+                        }
+                    </p>
+                    <a asp-controller="DamagedReport" asp-action="Index" class="btn btn-primary">
+                        <i class="fas fa-arrow-right"></i> 
+                        @(isManager ? "View All Reports" : "Go to Damaged Reports")
+                    </a>
+                </div>
             </div>
         </div>
     </div>
-    <div class="col-md-6">
-        <div class="card text-center">
-            <div class="card-body">
-                <h5 class="card-title">Damaged Report</h5>
-                <p class="card-text">Report damaged equipment, assets, or tools.</p>
-                <a asp-controller="DamagedReport" asp-action="Index" class="btn btn-primary">Go to Damaged Reports</a>
+
+    <!-- Admin Panel - Visible ONLY to Gilbert -->
+    @if (isManager)
+    {
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="card border-warning">
+                    <div class="card-body">
+                        <h5 class="card-title text-warning">
+                            <i class="fas fa-user-shield"></i> Admin Panel
+                        </h5>
+                        <p class="card-text">
+                            <a asp-controller="Reports" asp-action="EmployeePasswordsPdf" class="btn btn-warning">
+                                <i class="fas fa-file-pdf"></i> Download Employee Credentials (PDF)
+                            </a>
+                        </p>
+                        <p class="card-text">
+                            <small class="text-muted">⚠️ This is for demo/testing purposes only.</small>
+                        </p>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
+    }
 </div>

@@ -1,10 +1,29 @@
 ﻿@model IEnumerable<DigitalFormsSystem.Models.FixedAssetRequest>
+@inject DigitalFormsSystem.Core.Interfaces.ICurrentUserService CurrentUserService
 
 @{
     ViewData["Title"] = "Fixed Asset Requests";
+    var isManager = CurrentUserService.EmployeeId == 778; // Gilbert's ID
 }
 
 <h1>Fixed Asset Requests</h1>
+
+<!-- ✅ ROLE-BASED ALERT -->
+@if (isManager)
+{
+    <div class="alert alert-info">
+        <i class="fas fa-user-shield"></i> 
+        <strong>Admin View:</strong> You are seeing ALL requests from ALL employees.
+        <span class="badge bg-primary float-end">Total: @Model.Count()</span>
+    </div>
+}
+else
+{
+    <div class="alert alert-secondary">
+        <i class="fas fa-user"></i> 
+        <strong>My Requests:</strong> You are seeing only your own requests.
+    </div>
+}
 
 <p>
     <a asp-action="Create" class="btn btn-primary">Create New Request</a>
@@ -34,7 +53,11 @@
                 <td>@item.Section</td>
                 <td>@item.AssetType</td>
                 <td>@item.Quantity</td>
-                <td>@item.RequestStatus</td>
+                <td>
+                    <span class="badge @(item.RequestStatus == "Draft" ? "bg-warning" : "bg-success")">
+                        @item.RequestStatus
+                    </span>
+                </td>
                 <td>
                     <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-info">Details</a>
                     <a asp-action="Print" asp-route-id="@item.Id" class="btn btn-sm btn-secondary" target="_blank">Print</a>
@@ -48,3 +71,11 @@
         }
     </tbody>
 </table>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i> No requests found.
+        <a asp-action="Create">Create your first request</a>
+    </div>
+}
