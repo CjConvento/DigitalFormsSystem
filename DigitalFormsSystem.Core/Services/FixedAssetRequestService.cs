@@ -1,6 +1,7 @@
 using DigitalFormsSystem.Core.Interfaces;
-using DigitalFormsSystem.Models;
+using DigitalFormsSystem.Core.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration; 
 
 namespace DigitalFormsSystem.Core.Services
 {
@@ -8,23 +9,46 @@ namespace DigitalFormsSystem.Core.Services
     {
         private readonly DigitalFormsSystemContext _context;
         private readonly INotificationService _notificationService;
+        private readonly IAuditService _auditService;
+        private readonly int _managerId;
 
         public FixedAssetRequestService(
             DigitalFormsSystemContext context, 
-            INotificationService notificationService)
+            INotificationService notificationService,
+            IAuditService auditService,
+            IConfiguration configuration)
         {
             _context = context;
             _notificationService = notificationService;
+            _auditService = auditService;
+            _managerId = configuration.GetValue<int>("AppSettings:ManagerEmployeeId");
+
+            // FOR LOGGING
+            Console.WriteLine($"🔍 ManagerId loaded: {_managerId}");
         }
 
         // ============ READ ============
         public async Task<List<FixedAssetRequest>> GetUserRequestsAsync(int employeeId)
         {
-            return await _context.FixedAssetRequests
-                .Where(r => r.RequestedByEmployeeId == employeeId)
-                .Include(r => r.RequestedByEmployee)
-                .OrderByDescending(r => r.DateRequested)
-                .ToListAsync();
+            Console.WriteLine($"🔍 GetUserRequestsAsync called with employeeId: {employeeId}");
+            Console.WriteLine($"🔍 _managerId is: {_managerId}");
+
+            if (employeeId == _managerId)
+            {
+                Console.WriteLine("✅ Manager detected!");
+                var allRequests = await _context.FixedAssetRequests.ToListAsync();
+                Console.WriteLine($"📊 Total requests found: {allRequests.Count}");
+                return allRequests;
+            }
+            else
+            {
+                Console.WriteLine("❌ Not manager. Returning only user's requests.");
+                return await _context.FixedAssetRequests
+                    .Where(r => r.RequestedByEmployeeId == employeeId)
+                    .Include(r => r.RequestedByEmployee)
+                    .OrderByDescending(r => r.DateRequested)
+                    .ToListAsync();
+            }
         }
 
         public async Task<FixedAssetRequest?> GetRequestWithDetailsAsync(int id)

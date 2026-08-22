@@ -1,5 +1,5 @@
 ﻿using DigitalFormsSystem.Core.Interfaces;
-using DigitalFormsSystem.Models;
+using DigitalFormsSystem.Core.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -15,11 +15,13 @@ namespace DigitalFormsSystem.Controllers
         private readonly ICurrentUserService _currentUserService;
         private readonly IConfiguration _config;
         private readonly IWebHostEnvironment _env;
+        private readonly IAuditService _auditService;
         private readonly DigitalFormsSystemContext _context;  // <-- dinagdag
 
         public DamagedReportController(
             IDamagedReportService service,
             ICurrentUserService currentUserService,
+            IAuditService auditService,
             IConfiguration config,
             IWebHostEnvironment env,
             DigitalFormsSystemContext context)  // <-- dinagdag sa constructor
@@ -27,6 +29,7 @@ namespace DigitalFormsSystem.Controllers
             _service = service;
             _currentUserService = currentUserService;
             _config = config;
+            _auditService = auditService;
             _env = env;
             _context = context;  // <-- i-assign
         }

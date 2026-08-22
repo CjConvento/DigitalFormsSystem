@@ -1,5 +1,5 @@
 using DigitalFormsSystem.Core.Interfaces;
-using DigitalFormsSystem.Models;
+using DigitalFormsSystem.Core.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -9,17 +9,36 @@ namespace DigitalFormsSystem.Web.Services
     public class DamagedReportService : IDamagedReportService
     {
         private readonly DigitalFormsSystemContext _context;
+        private readonly IWebHostEnvironment _env;
         private readonly IConfiguration _config;
+        private readonly int _managerId;  
 
-        public DamagedReportService(DigitalFormsSystemContext context, IConfiguration config)
+        public DamagedReportService(
+            DigitalFormsSystemContext context, 
+            IWebHostEnvironment env,
+            IConfiguration config
+            )
         {
             _context = context;
+            _env = env;
             _config = config;
+            _managerId = config.GetValue<int>("AppSettings:ManagerEmployeeId");
         }
 
         // ============ READ ============
         public async Task<List<DamagedReport>> GetUserReportsAsync(int employeeId)
         {
+            // ✅ CHECK IF GILBERT (ADMIN)
+            if (employeeId == _managerId)
+            {
+                // ✅ RETURN ALL REPORTS
+                return await _context.DamagedReports
+                    .Include(r => r.ReportedByEmployee)
+                    .OrderByDescending(r => r.CreatedAt)
+                    .ToListAsync();
+            }
+
+            // ✅ REGULAR USER: ONLY THEIR OWN
             return await _context.DamagedReports
                 .Include(r => r.ReportedByEmployee)
                 .Where(r => r.ReportedByEmployeeId == employeeId)

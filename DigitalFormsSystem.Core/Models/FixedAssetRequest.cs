@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
-namespace DigitalFormsSystem.Models;
+namespace DigitalFormsSystem.Core.Models;
 
 public partial class FixedAssetRequest : IValidatableObject
 {

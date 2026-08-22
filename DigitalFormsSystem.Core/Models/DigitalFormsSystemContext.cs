@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using DigitalFormsSystem.Models;
+using DigitalFormsSystem.Core.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace DigitalFormsSystem.Models;
+namespace DigitalFormsSystem.Core.Models;
 
 public partial class DigitalFormsSystemContext : DbContext
 {
@@ -17,6 +17,8 @@ public partial class DigitalFormsSystemContext : DbContext
     }
 
     public virtual DbSet<AssetType> AssetTypes { get; set; }
+
+    public virtual DbSet<AuditLog> AuditLogs { get; set; }
 
     public virtual DbSet<DamagedReport> DamagedReports { get; set; }
 
