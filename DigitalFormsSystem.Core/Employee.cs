@@ -29,6 +29,10 @@ public partial class Employee
 
     public DateTime? CreatedAt { get; set; }
 
+    public string? PasswordHash { get; set; }
+
+    public bool? IsFirstLogin { get; set; } = true;
+
     public virtual ICollection<FixedAssetPrintLog> FixedAssetPrintLogs { get; set; } = new List<FixedAssetPrintLog>();
 
     public virtual ICollection<FixedAssetRequestApproval> FixedAssetRequestApprovalExecutiveEvaluatedByEmployees { get; set; } = new List<FixedAssetRequestApproval>();

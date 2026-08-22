@@ -1,6 +1,7 @@
 ﻿using DigitalFormsSystem.Models;
 using DigitalFormsSystem.Core.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using BCrypt.Net;
 using Microsoft.EntityFrameworkCore;
 
 namespace DigitalFormsSystem.Web.Controllers
@@ -28,26 +29,29 @@ namespace DigitalFormsSystem.Web.Controllers
                 var employee = await _context.Employees
                     .FirstOrDefaultAsync(e => e.EmployeeNo == model.EmployeeNo);
 
-                if (employee != null)
+                if (employee != null && !string .IsNullOrEmpty(employee.PasswordHash))
                 {
-                    if (model.Password != "hstpass")
-                    {
-                        ModelState.AddModelError("", "Invalid password.");
-                        return View(model);
-                    }
 
-                    _currentUserService.SignIn(
+                    bool isValid = BCrypt.Net.BCrypt.Verify(model.Password, employee.PasswordHash);
+
+                    if (isValid)
+                    {
+                        _currentUserService.SignIn(
                         employee.Id,
                         employee.Name,
                         employee.EmployeeNo,
                         employee.Department ?? ""
-                    );
-
+                    );   
                     return RedirectToAction("Index", "Home");
                 }
                 else
                 {
-                    ModelState.AddModelError("", "Employee not found.");
+                    ModelState.AddModelError("", "Invalid password.");
+                }
+            }
+            else
+                {
+                    ModelState.AddModelError("","Employee not found.");
                 }
             }
             return View(model);
