@@ -1,4 +1,4 @@
-using DigitalFormsSystem.Models;
+using DigitalFormsSystem.Core.Models;
 using Microsoft.AspNetCore.Http;
 
 namespace DigitalFormsSystem.Core.Interfaces

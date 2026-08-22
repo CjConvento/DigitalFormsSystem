@@ -1,5 +1,5 @@
 ﻿using DigitalFormsSystem.Core.Interfaces;
-using DigitalFormsSystem.Models;
+using DigitalFormsSystem.Core.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,16 +10,19 @@ namespace DigitalFormsSystem.Controllers
         private readonly IFixedAssetRequestService _service;
         private readonly ICurrentUserService _currentUserService;
         private readonly INotificationService _notificationService; 
+        private readonly IAuditService _auditService;
 
         // 
         public FixedAssetController(
             IFixedAssetRequestService service,
             ICurrentUserService currentUserService,
-            INotificationService notificationService)  
+            INotificationService notificationService,
+            IAuditService auditService)  
         {
             _service = service;
             _currentUserService = currentUserService;
-            _notificationService = notificationService;  
+            _notificationService = notificationService;
+            _auditService = auditService;  
         }
 
         // ============ INDEX ============
@@ -118,6 +121,14 @@ namespace DigitalFormsSystem.Controllers
             try
             {
                 var created = await _service.CreateRequestAsync(request, existingUnits);
+                
+                // ✅ LOG CREATE
+                await _auditService.LogAsync(
+                    "Create",
+                    "FixedAssetRequest",
+                    created.Id,
+                    $"Created request {created.ControlNo}");
+
                 TempData["SuccessMessage"] = "Request created successfully.";
                 return RedirectToAction(nameof(Index));
             }
@@ -202,6 +213,13 @@ namespace DigitalFormsSystem.Controllers
                 var success = await _service.UpdateRequestAsync(updatedRequest, parsedUnits);
                 if (!success) return NotFound();
 
+                // ✅ LOG EDIT
+                await _auditService.LogAsync(
+                    "Edit",
+                    "FixedAssetRequest",
+                    id,
+                    $"Updated request {updatedRequest.ControlNo}");
+
                 TempData["SuccessMessage"] = "Request updated successfully.";
                 return RedirectToAction(nameof(Index));
             }
@@ -251,6 +269,13 @@ namespace DigitalFormsSystem.Controllers
                     _currentUserService.EmployeeId!.Value);
                 // ==================================
 
+                // ✅ LOG DELETE
+                await _auditService.LogAsync(
+                "Delete",
+                "FixedAssetRequest",
+                id,
+                $"Deleted request ID: {id}");
+
                 TempData["SuccessMessage"] = "Request deleted successfully.";
                 return RedirectToAction(nameof(Index));
             }
@@ -271,6 +296,12 @@ namespace DigitalFormsSystem.Controllers
 
             // Log print activity
             await _service.LogPrintActivityAsync(id, empId);
+            // ✅ LOG PRINT
+            await _auditService.LogAsync(
+                "Print",
+                "FixedAssetRequest",
+                id,
+                $"Printed request ID: {id}");
 
             var request = await _service.GetRequestForPrintAsync(id);
             if (request == null) return NotFound();
