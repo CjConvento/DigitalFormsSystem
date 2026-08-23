@@ -1,5 +1,7 @@
 # Digital Forms System
 
+**Status: Active development** — core modules and auth are functional; search/filter and a few other features are still in progress (see [Roadmap](#-roadmap)).
+
 A fullstack internal web application built for **HS Technologies (Phils.), Inc. (HST)**, developed during a 600-hour internship in the MIS-IT section. The system digitizes two core company processes — **Fixed Asset Requests** and **Damaged Reports** — replacing manual paper-based workflows with a role-based, database-driven web application.
 
 > ⚠️ This repository is a personal portfolio continuation of an internship deliverable. It does not contain any real company data. All employee records, credentials, and department data used for local development/testing are synthetic/dummy data.
