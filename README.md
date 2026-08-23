@@ -6,6 +6,21 @@ A fullstack internal web application built for **HS Technologies (Phils.), Inc. 
 
 ---
 
+## 📋 Business Context
+
+HST previously ran these two processes on paper forms (`HRDA-F-2.10.6.1` for Fixed Asset Requests, `HRDA-F-2.9.10.8` for Damaged Reports), routed manually between departments for approval and filing.
+
+| | Paper-based | This system |
+|---|---|---|
+| Submission | Physical form, hand-carried to GAD-HR | Web form, submitted online |
+| Tracking | Status written on the same sheet | Status history stored in the database |
+| Visibility | Whoever has the physical copy | Role-based — Employee sees own records, IT Manager sees all |
+| Records | Filed in cabinets | Queryable in SQL Server |
+
+The system replicates the same approval fields and workflow from the original forms, just digitized.
+
+---
+
 ## ✨ Features
 
 - **Role-based access control (RBAC)** — separate views and permissions for IT Manager and Employee roles
