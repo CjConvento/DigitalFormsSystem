@@ -1,5 +1,6 @@
 using DigitalFormsSystem.Core.Models;
 using Microsoft.EntityFrameworkCore;
+using DigitalFormsSystem.Core.Helpers;
 using BCrypt.Net; 
 
 namespace DigitalFormsSystem.Data
@@ -22,8 +23,10 @@ namespace DigitalFormsSystem.Data
 
             foreach (var emp in employees)
             {
-                var defaultPassword = $"HST{emp.EmployeeNo}!";
-                emp.PasswordHash = BCrypt.Net.BCrypt.HashPassword(defaultPassword);                
+                // ✅ NEW: Random password generation
+                var defaultPassword = PasswordGenerator.GeneratePasswordWithEmployeeNo(emp.EmployeeNo, 8);
+
+                emp.PasswordHash = BCrypt.Net.BCrypt.HashPassword(defaultPassword);
                 emp.IsFirstLogin = true;
             }
 
