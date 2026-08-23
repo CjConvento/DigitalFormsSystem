@@ -298,6 +298,16 @@ python generate_employee_passwords_from_db.py
 
 Hand this PDF to **Gilbert (IT Manager)** directly, via a secure channel (in person or encrypted transfer) — not email or chat. It contains every employee's initial password and should never sit in a shared folder or be forwarded further than necessary.
 
+> ⚠️ **This is a one-time setup step.** Once the PDF has been generated and confirmed to be in Gilbert's hands, the `PlainTextPassword` column should be **removed entirely** — not just cleared — since it has no further purpose after this initial seeding. In the source code:
+> 1. Remove the `PlainTextPassword` property from `Employee.cs`
+> 2. Remove any references to it in `DbInitializer.cs`
+> 3. Generate and apply a migration to drop the column:
+>    ```powershell
+>    dotnet ef migrations add RemovePlainTextPasswordColumn --project DigitalFormsSystem.Core --startup-project DigitalFormsSystem
+>    dotnet ef database update --project DigitalFormsSystem.Core --startup-project DigitalFormsSystem
+>    ```
+> After this, there is no remaining plaintext password anywhere in the system — only the BCrypt hash.
+
 ### Step 9: Configure Windows Firewall
 
 ```powershell
