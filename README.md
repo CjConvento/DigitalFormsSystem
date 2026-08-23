@@ -393,10 +393,14 @@ EXEC sp_addrolemember 'db_datawriter', 'IIS APPPOOL\DigitalFormsSystemPool';
 
 ## 📌 Roadmap
 
+- [ ] Complete remaining approval stages (e.g., VP-level validation) for Fixed Asset Requests and Damaged Reports
+- [ ] Incorporate additional workflow requirements as they're identified during rollout with HST
 - [ ] Add session timeout configuration
 - [ ] Add login attempt lockout
 - [ ] Add search and filter for requests/reports
 - [ ] Complete Blazor Server refactor
+
+> The multi-stage approval workflow (based on HST's existing paper forms) is implemented for the core stages, but some steps — such as VP-level validation — are still in progress. Additional requirements are expected from HST's MIS-IT Manager as the system moves toward production use.
 
 ---
 
@@ -408,4 +412,4 @@ Developed during internship at HS Technologies (Phils.), Inc., continued as a pe
 
 ## 📄 License
 
-This project is for portfolio and internal system purposes only.
+This project is for portfolio and educational purposes only.
