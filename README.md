@@ -4,7 +4,7 @@
 
 A fullstack internal web application built for **HS Technologies (Phils.), Inc. (HST)**, developed during a 600-hour internship in the MIS-IT section. The system digitizes two core company processes — **Fixed Asset Requests** and **Damaged Reports** — replacing manual paper-based workflows with a role-based, database-driven web application.
 
-> ⚠️ This repository is a personal portfolio continuation of an internship deliverable. It does not contain any real company data. All employee records, credentials, and department data used for local development/testing are synthetic/dummy data.
+> ⚠️ **Data notice:** This repository's code and version history contain no real employee data — all seed data used for local development is synthetic. However, this system is intended for actual deployment at HST, and real employee records will be used during production testing and rollout (managed directly by HST's IT Manager on internal infrastructure). Real company data must never be committed to this repo, included in screenshots/demos, or generated/stored outside of the production environment.
 
 ---
 
@@ -250,6 +250,36 @@ cd C:\inetpub\wwwroot\DigitalFormsSystem\DigitalFormsSystem
 dotnet ef database update --project DigitalFormsSystem.Core --startup-project DigitalFormsSystem
 ```
 
+### Step 6.5: Import Employee Data
+
+Employee data is **not included in this repo** and is not provided as a file by the developer. HST's IT Manager should populate the `Employees` table by extracting records directly from HST's existing employee database (e.g., via a Python or SQL script run on their own infrastructure), mapping fields to match the schema below.
+
+**`Employees` table schema:**
+
+```
+[dbo].[Employees] (
+  [ID],
+  [EmployeeNo],
+  [Name],
+  [DateHired],
+  [Company],
+  [Location],
+  [Department],
+  [Section],
+  [Category],
+  [Status],
+  [IsActive],
+  [CreatedAt],
+  [PasswordHash],
+  [IsFirstLogin]
+)
+```
+
+> ⚠️ **Before running the password seeding step below**, confirm `PasswordHash` is `NULL` or empty for all imported rows — otherwise the seeding logic may skip rows it thinks are already set up, and those employees will end up with no usable temp password. Clear the column first if needed:
+> ```sql
+> UPDATE [dbo].[Employees] SET [PasswordHash] = NULL;
+> ```
+
 ### Step 7: Seed Employee Data
 
 ```powershell
@@ -378,4 +408,4 @@ Developed during internship at HS Technologies (Phils.), Inc., continued as a pe
 
 ## 📄 License
 
-This project is for portfolio and educational purposes only.
+This project is for portfolio and internal system purposes only.
