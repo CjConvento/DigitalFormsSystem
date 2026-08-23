@@ -1,11 +1,28 @@
-﻿@model IEnumerable<DigitalFormsSystem.Models.DamagedReport>
+﻿@model IEnumerable<DigitalFormsSystem.Core.Models.DamagedReport>
+@inject DigitalFormsSystem.Core.Interfaces.ICurrentUserService CurrentUserService
 
 @{
     ViewData["Title"] = "Damaged Reports";
-    var userName = Context.Session.GetString("EmployeeName");
-}
+    var isManager = CurrentUserService.EmployeeId == 778;}
 
 <h1>Damaged Reports</h1>
+
+<!-- ✅ ROLE-BASED ALERT -->
+@if (isManager)
+{
+    <div class="alert alert-info">
+        <i class="fas fa-user-shield"></i> 
+        <strong>Admin View:</strong> You are seeing ALL reports from ALL employees.
+        <span class="badge bg-primary float-end">Total: @Model.Count()</span>
+    </div>
+}
+else
+{
+    <div class="alert alert-secondary">
+        <i class="fas fa-user"></i> 
+        <strong>My Reports:</strong> You are seeing only your own reports.
+    </div>
+}
 
 <p>
     <a asp-action="Create" class="btn btn-primary">Create New Report</a>
@@ -30,7 +47,11 @@
                 <td>@item.Item</td>
                 <td>@(item.IncidentDateTime?.ToString("yyyy-MM-dd HH:mm"))</td>
                 <td>@(item.ReportedByEmployee?.Name)</td>
-                <td>@item.RequestStatus</td>
+                <td>
+                    <span class="badge @(item.RequestStatus == "Draft" ? "bg-warning" : "bg-success")">
+                        @item.RequestStatus
+                    </span>
+                </td>
                 <td>
                     <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-info">Details</a>
                     <a asp-action="Print" asp-route-id="@item.Id" class="btn btn-sm btn-secondary" target="_blank">Print</a>
@@ -44,3 +65,11 @@
         }
     </tbody>
 </table>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i> No reports found.
+        <a asp-action="Create">Create your first report</a>
+    </div>
+}

@@ -1,23 +1,30 @@
-﻿using DigitalFormsSystem.Models;
+﻿using DigitalFormsSystem.Core.Models;
+using DigitalFormsSystem.Core.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using BCrypt.Net;
 using Microsoft.EntityFrameworkCore;
+using DigitalFormsSystem.Services;
 
-namespace DigitalFormsSystem.Controllers
+namespace DigitalFormsSystem.Web.Controllers
 {
     public class AccountController : Controller
     {
         private readonly DigitalFormsSystemContext _context;
+        private readonly ICurrentUserService _currentUserService;
+        private readonly IAuditService _auditService;
 
-        public AccountController(DigitalFormsSystemContext context)
+        public AccountController(
+            DigitalFormsSystemContext context, 
+            ICurrentUserService currentUserService,
+            IAuditService auditService)
         {
             _context = context;
+            _currentUserService = currentUserService;
+            _auditService = auditService;
         }
 
         [HttpGet]
-        public IActionResult Login()
-        {
-            return View();
-        }
+        public IActionResult Login() => View();
 
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -28,34 +35,73 @@ namespace DigitalFormsSystem.Controllers
                 var employee = await _context.Employees
                     .FirstOrDefaultAsync(e => e.EmployeeNo == model.EmployeeNo);
 
-                if (employee != null)
+                if (employee != null && !string .IsNullOrEmpty(employee.PasswordHash))
                 {
-                    // password
-                    if (model.Password != "hstpass")
-                    {
-                        ModelState.AddModelError("", "Invalid password.");
-                        return View(model);
-                    }
 
-                    HttpContext.Session.SetInt32("EmployeeId", employee.Id);
-                    HttpContext.Session.SetString("EmployeeName", employee.Name);
-                    HttpContext.Session.SetString("EmployeeNo", employee.EmployeeNo);
-                    // ADD THIS LINE:
-                    HttpContext.Session.SetString("EmployeeDepartment", employee.Department ?? "");
+                    bool isValid = BCrypt.Net.BCrypt.Verify(model.Password, employee.PasswordHash);
+
+                    if (isValid)
+                    {
+                        // ✅ SIGN IN MUNA (para may UserName na!)
+                        _currentUserService.SignIn(
+                            employee.Id,
+                            employee.Name,
+                            employee.EmployeeNo,
+                            employee.Department ?? ""
+                        );
+
+                        // ✅ THEN LOG THE AUDIT (may UserName na!)
+                        await _auditService.LogAsync(
+                            "Login",
+                            "Account",
+                            employee.Id,
+                            $"Login successful for {employee.EmployeeNo}"
+                        );
 
                     return RedirectToAction("Index", "Home");
                 }
                 else
                 {
+                    // ❌ Failed login (wala pang user)
+                    await _auditService.LogAsync(
+                        "LoginFailed",
+                        "Account",
+                        null,
+                        $"Failed login attempt for {model.EmployeeNo}"
+                    );
+
+                    ModelState.AddModelError("", "Invalid password.");
+                }
+            }
+            else
+                {
+                    // ❌ Employee not found (wala pang user)
+                    await _auditService.LogAsync(
+                        "LoginFailed",
+                        "Account",
+                        null,
+                        $"Employee not found: {model.EmployeeNo}"
+                    );
+
                     ModelState.AddModelError("", "Employee not found.");
                 }
             }
             return View(model);
         }
 
-        public IActionResult Logout()
+        public async Task<IActionResult> Logout()
         {
-            HttpContext.Session.Clear();
+            var empId = _currentUserService.EmployeeId;
+            var empName = _currentUserService.EmployeeName;
+
+            // ✅ LOG LOGOUT
+            await _auditService.LogAsync(
+                "Logout",
+                "Account",
+                empId,
+                $"Logout for {empName}");
+
+            _currentUserService.SignOut();
             return RedirectToAction("Login");
         }
     }

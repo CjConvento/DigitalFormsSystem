@@ -1,4 +1,4 @@
-﻿@model DigitalFormsSystem.Models.LoginViewModel
+﻿@model DigitalFormsSystem.Core.Models.LoginViewModel
 
 @{
     Layout = null;
@@ -18,18 +18,19 @@
             <div asp-validation-summary="ModelOnly" class="error"></div>
             <div class="form-group">
                 <label asp-for="EmployeeNo"></label>
-                <input asp-for="EmployeeNo" class="form-control" placeholder="e.g., HS9501-0019" />
+                <input asp-for="EmployeeNo" class="form-control" placeholder="e.g., HSXXXX-XXXX" />
                 <span asp-validation-for="EmployeeNo" class="error"></span>
             </div>
             <div class="form-group">
                 <label asp-for="Password"></label>
-                <input asp-for="Password" class="form-control" type="password" placeholder="(password = hstpass)" />
+                <input asp-for="Password" class="form-control" type="password" />
                 <span asp-validation-for="Password" class="error"></span>
+                <small class="text-muted">First time logging in? Ask your MIS-IT Administrator (Gilbert) for your temporary password.</small>
             </div>  
             <button type="submit" class="btn-login">Login</button>
         </form>
         <div class="text-muted">
-            Use your Employee No. from the Employees HST Database (e.g., HS9501-0019)
+            Use your Employee No. from the Employees HST Database (e.g., HSXXXX-XXXX)
         </div>
     </div>
 </body>

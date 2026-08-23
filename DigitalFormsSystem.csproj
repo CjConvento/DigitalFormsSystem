@@ -4,18 +4,39 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.3.12" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.0">
-      <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="QuestPDF" Version="2026.7.3" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="DigitalFormsSystem.Core\DigitalFormsSystem.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+  <Compile Remove="DigitalFormsSystem.Core\**" />
+  <EmbeddedResource Remove="DigitalFormsSystem.Core\**" />
+  <None Remove="DigitalFormsSystem.Core\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="DigitalFormsSystem.Blazor\**" />
+    <EmbeddedResource Remove="DigitalFormsSystem.Blazor\**" />
+    <None Remove="DigitalFormsSystem.Blazor\**" />
+    <Content Remove="DigitalFormsSystem.Blazor\**" />
+  </ItemGroup>
+  
 </Project>
+

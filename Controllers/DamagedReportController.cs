@@ -1,102 +1,94 @@
-﻿using DigitalFormsSystem.Models;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
+﻿using DigitalFormsSystem.Core.Interfaces;
+using DigitalFormsSystem.Core.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http; 
+using Microsoft.Extensions.Configuration;
 
 namespace DigitalFormsSystem.Controllers
 {
     public class DamagedReportController : Controller
     {
-        private readonly DigitalFormsSystemContext _context;
-        private readonly IWebHostEnvironment _env;
+        private readonly IDamagedReportService _service;
+        private readonly ICurrentUserService _currentUserService;
         private readonly IConfiguration _config;
+        private readonly IWebHostEnvironment _env;
+        private readonly IAuditService _auditService;
+        private readonly DigitalFormsSystemContext _context;  // <-- dinagdag
 
-        public DamagedReportController(DigitalFormsSystemContext context, IWebHostEnvironment env, IConfiguration config)
+        public DamagedReportController(
+            IDamagedReportService service,
+            ICurrentUserService currentUserService,
+            IAuditService auditService,
+            IConfiguration config,
+            IWebHostEnvironment env,
+            DigitalFormsSystemContext context)  // <-- dinagdag sa constructor
         {
-            _context = context;
-            _env = env;
+            _service = service;
+            _currentUserService = currentUserService;
             _config = config;
+            _auditService = auditService;
+            _env = env;
+            _context = context;  // <-- i-assign
         }
 
-        // GET: DamagedReport
+        // ============ INDEX ============
         public async Task<IActionResult> Index()
         {
-            var empId = HttpContext.Session.GetInt32("EmployeeId");
-            if (empId == null) return RedirectToAction("Login", "Account");
+            if (!_currentUserService.IsAuthenticated)
+                return RedirectToAction("Login", "Account");
 
-            var reports = await _context.DamagedReports
-                .Include(r => r.ReportedByEmployee)
-                .Where(r => r.ReportedByEmployeeId == empId)
-                .OrderByDescending(r => r.CreatedAt)
-                .ToListAsync();
+            var reports = await _service.GetUserReportsAsync(_currentUserService.EmployeeId!.Value);
             return View(reports);
         }
 
-        // GET: DamagedReport/Details/5
+        // ============ DETAILS ============
         public async Task<IActionResult> Details(int id)
         {
-            var empId = HttpContext.Session.GetInt32("EmployeeId");
-            if (empId == null) return RedirectToAction("Login", "Account");
+            if (!_currentUserService.IsAuthenticated)
+                return RedirectToAction("Login", "Account");
 
-            var report = await _context.DamagedReports
-                .Include(r => r.ReportedByEmployee)
-                .Include(r => r.ReceivedByEmployee)
-                .Include(r => r.Images) // include images
-                .FirstOrDefaultAsync(r => r.Id == id);
+            var report = await _service.GetReportWithDetailsAsync(id);
             if (report == null) return NotFound();
             return View(report);
         }
 
-        // GET: DamagedReport/Create
+        // ============ CREATE (GET) ============
         public IActionResult Create()
         {
-            var empId = HttpContext.Session.GetInt32("EmployeeId");
-            if (empId == null) return RedirectToAction("Login", "Account");
+            if (!_currentUserService.IsAuthenticated)
+                return RedirectToAction("Login", "Account");
 
             ViewBag.Employees = new SelectList(_context.Employees, "Id", "Name");
             return View();
         }
 
-        // POST: DamagedReport/Create
+        // ============ CREATE (POST) ============
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(DamagedReport report, List<IFormFile> partIimages, List<IFormFile> partIIimages)
         {
-            var empId = HttpContext.Session.GetInt32("EmployeeId");
-            if (empId == null) return RedirectToAction("Login", "Account");
+            if (!_currentUserService.IsAuthenticated)
+                return RedirectToAction("Login", "Account");
 
-            // Auto-set fields (but don't save yet)
-            report.ReportedByEmployeeId = empId.Value;
-            report.ControlNo = GenerateControlNo();
-            report.CreatedAt = DateTime.Now;
-            report.UpdatedAt = DateTime.Now;
-            report.RequestStatus = "Draft";
+            var empId = _currentUserService.EmployeeId!.Value;
+            report.ReportedByEmployeeId = empId;
 
-            // Remove validation errors for properties we set manually
+            // Remove validation errors
             ModelState.Remove("ControlNo");
             ModelState.Remove("ReportedByEmployeeId");
             ModelState.Remove("CreatedAt");
             ModelState.Remove("UpdatedAt");
             ModelState.Remove("RequestStatus");
-
-            // Remove validation for navigation properties
             ModelState.Remove("ReportedByEmployee");
             ModelState.Remove("ReceivedByEmployee");
             ModelState.Remove("InvestigatedByEmployee");
             ModelState.Remove("VerifiedByEmployee");
             ModelState.Remove("NotedByEmployee");
 
-            // ========== MANUAL DATE PARSING ==========
-            // DatePurchased (DateOnly?)
+            // Manual date parsing (copy from your existing code)
             var datePurchasedStr = Request.Form["DatePurchased"].ToString();
             if (!string.IsNullOrEmpty(datePurchasedStr))
             {
@@ -105,19 +97,10 @@ namespace DigitalFormsSystem.Controllers
                 else
                     report.DatePurchased = datePurchased;
             }
-            else
-            {
-                report.DatePurchased = null;
-            }
 
-            // IncidentDateTime (DateTime?)
             var incidentDateTimeStr = Request.Form["IncidentDateTime"].ToString();
-            // Log the raw value to the Output window (View → Output in VS)
-            Console.WriteLine($"IncidentDateTime raw: '{incidentDateTimeStr}'");
-
             if (!string.IsNullOrWhiteSpace(incidentDateTimeStr))
             {
-                // Try multiple common formats
                 var formats = new[] { "yyyy-MM-ddTHH:mm", "yyyy-MM-ddTHH:mm:ss", "yyyy-MM-ddTHH:mm:ss.fff" };
                 if (DateTime.TryParseExact(incidentDateTimeStr, formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out var incidentDateTime))
                     report.IncidentDateTime = incidentDateTime;
@@ -126,15 +109,8 @@ namespace DigitalFormsSystem.Controllers
                 else
                     ModelState.AddModelError("IncidentDateTime", "Invalid incident date/time format.");
             }
-            else
-            {
-                report.IncidentDateTime = null;
-            }
 
-            // ReceivedDateTime (same)
             var receivedDateTimeStr = Request.Form["ReceivedDateTime"].ToString();
-            Console.WriteLine($"ReceivedDateTime raw: '{receivedDateTimeStr}'");
-
             if (!string.IsNullOrWhiteSpace(receivedDateTimeStr))
             {
                 var formats = new[] { "yyyy-MM-ddTHH:mm", "yyyy-MM-ddTHH:mm:ss", "yyyy-MM-ddTHH:mm:ss.fff" };
@@ -145,14 +121,9 @@ namespace DigitalFormsSystem.Controllers
                 else
                     ModelState.AddModelError("ReceivedDateTime", "Invalid received date/time format.");
             }
-            else
-            {
-                report.ReceivedDateTime = null;
-            }
-            // ========================================
 
             // GAD-only: clear Part IV fields for non-GAD
-            var isGad = HttpContext.Session.GetString("EmployeeDepartment") == "GAD";
+            var isGad = _currentUserService.EmployeeDepartment == "GAD";
             if (!isGad)
             {
                 report.Findings = null;
@@ -166,140 +137,96 @@ namespace DigitalFormsSystem.Controllers
                 report.NotedByEmployeeId = null;
             }
 
-            // === 1. Validate all images before saving ===
+            // Validate images
+            var maxFileSizeMB = _config.GetValue<int>("UploadSettings:MaxFileSizeMB", 5);
             bool hasImageError = false;
+
             if (partIimages != null)
             {
                 foreach (var img in partIimages)
                 {
-                    if (img.Length > 0 && !IsValidImage(img, out string errorMsg))
+                    if (img.Length > 0 && !_service.IsValidImage(img, out string errorMsg, maxFileSizeMB))
                     {
                         ModelState.AddModelError("partIimages", errorMsg);
                         hasImageError = true;
                     }
                 }
             }
+
             if (partIIimages != null)
             {
                 foreach (var img in partIIimages)
                 {
-                    if (img.Length > 0 && !IsValidImage(img, out string errorMsg))
+                    if (img.Length > 0 && !_service.IsValidImage(img, out string errorMsg, maxFileSizeMB))
                     {
                         ModelState.AddModelError("partIIimages", errorMsg);
                         hasImageError = true;
                     }
                 }
             }
+
             if (hasImageError)
             {
                 ViewBag.Employees = new SelectList(_context.Employees, "Id", "Name", report.ReceivedByEmployeeId);
                 return View(report);
             }
 
-            // === 2. If all images are valid, save the report ===
             if (ModelState.IsValid)
             {
-                _context.Add(report);
-                await _context.SaveChangesAsync();
-
-                // Save Part I images
-                var uploadsFolder = GetUploadsFolder();
-                if (!Directory.Exists(uploadsFolder))
-                    Directory.CreateDirectory(uploadsFolder);
-
-                if (partIimages != null)
+                try
                 {
-                    foreach (var img in partIimages)
-                    {
-                        if (img.Length > 0)
-                        {
-                            var uniqueName = Guid.NewGuid().ToString() + Path.GetExtension(img.FileName);
-                            var filePath = Path.Combine(uploadsFolder, uniqueName);
-                            using (var stream = new FileStream(filePath, FileMode.Create))
-                            {
-                                await img.CopyToAsync(stream);
-                            }
-                            var imageRecord = new DamagedReportImage
-                            {
-                                DamagedReportId = report.Id,
-                                Section = "PartI",
-                                FileName = img.FileName,
-                                FilePath = $"/{_config["UploadSettings:DamagedReportsPath"]}/{uniqueName}",
-                                ContentType = img.ContentType,
-                                UploadedAt = DateTime.Now
-                            };
-                            _context.DamagedReportImages.Add(imageRecord);
-                        }
-                    }
-                    await _context.SaveChangesAsync();
-                }
+                    var uploadsPath = _config["UploadSettings:DamagedReportsPath"] ?? "uploads/damagedreports";
+                    var created = await _service.CreateReportAsync(
+                        report,
+                        partIimages,
+                        partIIimages,
+                        _env.WebRootPath,
+                        uploadsPath,
+                        maxFileSizeMB);
 
-                // Save Part II images
-                if (partIIimages != null)
+                    TempData["SuccessMessage"] = "Damaged Report created successfully.";
+                    return RedirectToAction(nameof(Index));
+                }
+                catch (Exception ex)
                 {
-                    foreach (var img in partIIimages)
-                    {
-                        if (img.Length > 0)
-                        {
-                            var uniqueName = Guid.NewGuid().ToString() + Path.GetExtension(img.FileName);
-                            var filePath = Path.Combine(uploadsFolder, uniqueName);
-                            using (var stream = new FileStream(filePath, FileMode.Create))
-                            {
-                                await img.CopyToAsync(stream);
-                            }
-                            var imageRecord = new DamagedReportImage
-                            {
-                                DamagedReportId = report.Id,
-                                Section = "PartII",
-                                FileName = img.FileName,
-                                FilePath = $"/{_config["UploadSettings:DamagedReportsPath"]}/{uniqueName}",
-                                ContentType = img.ContentType,
-                                UploadedAt = DateTime.Now
-                            };
-                            _context.DamagedReportImages.Add(imageRecord);
-                        }
-                    }
-                    await _context.SaveChangesAsync();
+                    ModelState.AddModelError("", $"Error creating report: {ex.Message}");
                 }
-
-                TempData["SuccessMessage"] = "Damaged Report created successfully.";
-                return RedirectToAction(nameof(Index));
             }
 
-            // Preserve existing units (images are not preserved, but that's acceptable)
             ViewBag.Employees = new SelectList(_context.Employees, "Id", "Name", report.ReceivedByEmployeeId);
             return View(report);
         }
 
-        // GET: DamagedReport/Edit/5
+        // ============ EDIT (GET) ============
         public async Task<IActionResult> Edit(int id)
         {
-            var empId = HttpContext.Session.GetInt32("EmployeeId");
-            if (empId == null) return RedirectToAction("Login", "Account");
+            if (!_currentUserService.IsAuthenticated)
+                return RedirectToAction("Login", "Account");
 
-            var report = await _context.DamagedReports
-                .Include(r => r.Images)
-                .FirstOrDefaultAsync(r => r.Id == id);
+            var report = await _service.GetReportWithDetailsAsync(id);
             if (report == null) return NotFound();
+
             if (report.RequestStatus != "Draft")
             {
                 TempData["ErrorMessage"] = "Only reports with 'Draft' status can be edited.";
                 return RedirectToAction(nameof(Index));
             }
+
             ViewBag.Employees = new SelectList(_context.Employees, "Id", "Name", report.ReceivedByEmployeeId);
             return View(report);
         }
 
-        // POST: DamagedReport/Edit
+        // ============ EDIT (POST) - Keep it simple for now ============
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, DamagedReport updatedReport, List<IFormFile> partIimages, List<IFormFile> partIIimages, List<int> deleteImageIds)
         {
-            var empId = HttpContext.Session.GetInt32("EmployeeId");
-            if (empId == null) return RedirectToAction("Login", "Account");
+            if (!_currentUserService.IsAuthenticated)
+                return RedirectToAction("Login", "Account");
 
             if (id != updatedReport.Id) return NotFound();
 
+            // Remove validation
             ModelState.Remove("ControlNo");
             ModelState.Remove("ReportedByEmployeeId");
             ModelState.Remove("CreatedAt");
@@ -311,201 +238,108 @@ namespace DigitalFormsSystem.Controllers
             ModelState.Remove("VerifiedByEmployee");
             ModelState.Remove("NotedByEmployee");
 
+            // GAD check
+            var isGad = _currentUserService.EmployeeDepartment == "GAD";
+            if (!isGad)
+            {
+                updatedReport.Findings = null;
+                updatedReport.Recommendation = null;
+                updatedReport.NegligenceFlag = null;
+                updatedReport.NegligenceDetails = null;
+                updatedReport.Remarks = null;
+                updatedReport.AdministrativeDiscipline = null;
+                updatedReport.InvestigatedByEmployeeId = null;
+                updatedReport.VerifiedByEmployeeId = null;
+                updatedReport.NotedByEmployeeId = null;
+            }
+
+            // Validate new images
+            var maxFileSizeMB = _config.GetValue<int>("UploadSettings:MaxFileSizeMB", 5);
+            bool hasImageError = false;
+
+            if (partIimages != null)
+            {
+                foreach (var img in partIimages)
+                {
+                    if (img.Length > 0 && !_service.IsValidImage(img, out string errorMsg, maxFileSizeMB))
+                    {
+                        ModelState.AddModelError("partIimages", errorMsg);
+                        hasImageError = true;
+                    }
+                }
+            }
+
+            if (partIIimages != null)
+            {
+                foreach (var img in partIIimages)
+                {
+                    if (img.Length > 0 && !_service.IsValidImage(img, out string errorMsg, maxFileSizeMB))
+                    {
+                        ModelState.AddModelError("partIIimages", errorMsg);
+                        hasImageError = true;
+                    }
+                }
+            }
+
+            if (hasImageError)
+            {
+                var originalReport = await _service.GetReportWithDetailsAsync(id);
+                if (originalReport != null)
+                {
+                    // Copy scalar fields
+                    originalReport.Item = updatedReport.Item;
+                    originalReport.FixedAssetCode = updatedReport.FixedAssetCode;
+                    originalReport.DatePurchased = updatedReport.DatePurchased;
+                    originalReport.BrandSize = updatedReport.BrandSize;
+                    originalReport.LocationUser = updatedReport.LocationUser;
+                    originalReport.SerialNumber = updatedReport.SerialNumber;
+                    originalReport.Color = updatedReport.Color;
+                    originalReport.IncidentDateTime = updatedReport.IncidentDateTime;
+                    originalReport.CauseOfDamage = updatedReport.CauseOfDamage;
+                    originalReport.ImmediateAction = updatedReport.ImmediateAction;
+                    originalReport.RecommendedAction = updatedReport.RecommendedAction;
+                    originalReport.ReceivedByEmployeeId = updatedReport.ReceivedByEmployeeId;
+                    originalReport.ReceivedDateTime = updatedReport.ReceivedDateTime;
+
+                    if (isGad)
+                    {
+                        originalReport.Findings = updatedReport.Findings;
+                        originalReport.Recommendation = updatedReport.Recommendation;
+                        originalReport.NegligenceFlag = updatedReport.NegligenceFlag;
+                        originalReport.NegligenceDetails = updatedReport.NegligenceDetails;
+                        originalReport.Remarks = updatedReport.Remarks;
+                        originalReport.AdministrativeDiscipline = updatedReport.AdministrativeDiscipline;
+                        originalReport.InvestigatedByEmployeeId = updatedReport.InvestigatedByEmployeeId;
+                        originalReport.VerifiedByEmployeeId = updatedReport.VerifiedByEmployeeId;
+                        originalReport.NotedByEmployeeId = updatedReport.NotedByEmployeeId;
+                    }
+
+                    ViewBag.Employees = new SelectList(_context.Employees, "Id", "Name", originalReport.ReceivedByEmployeeId);
+                    return View(originalReport);
+                }
+
+                ViewBag.Employees = new SelectList(_context.Employees, "Id", "Name", updatedReport.ReceivedByEmployeeId);
+                return View(updatedReport);
+            }
+
             if (ModelState.IsValid)
             {
                 try
                 {
-                    var existing = await _context.DamagedReports
-                        .Include(r => r.Images)
-                        .FirstOrDefaultAsync(r => r.Id == id);
-                    if (existing == null) return NotFound();
+                    var uploadsPath = _config["UploadSettings:DamagedReportsPath"];
+                    var success = await _service.UpdateReportAsync(
+                        updatedReport,
+                        partIimages,
+                        partIIimages,
+                        deleteImageIds,
+                        _env.WebRootPath,
+                        uploadsPath,
+                        maxFileSizeMB);
 
-                    if (existing.RequestStatus != "Draft")
+                    if (!success)
                     {
-                        TempData["ErrorMessage"] = "Only reports with 'Draft' status can be edited.";
+                        TempData["ErrorMessage"] = "Report not found or cannot be edited.";
                         return RedirectToAction(nameof(Index));
-                    }
-
-                    var isGad = HttpContext.Session.GetString("EmployeeDepartment") == "GAD";
-
-
-                    // --- 1. Delete selected images (works for both sections) ---
-                    if (deleteImageIds != null && deleteImageIds.Any())
-                    {
-                        var imagesToDelete = existing.Images.Where(i => deleteImageIds.Contains(i.Id)).ToList();
-                        foreach (var img in imagesToDelete)
-                        {
-                            var fullPath = Path.Combine(GetUploadsFolder(), Path.GetFileName(img.FilePath));
-                            if (System.IO.File.Exists(fullPath))
-                                System.IO.File.Delete(fullPath);
-                            _context.DamagedReportImages.Remove(img);
-                        }
-                        await _context.SaveChangesAsync();
-                    }
-
-                    // ========== ILAGAY DITO ANG VALIDATION NG MGA BAGONG IMAGES ==========
-                    bool hasImageError = false;
-
-                    if (partIimages != null)
-                    {
-                        foreach (var img in partIimages)
-                        {
-                            if (img.Length > 0 && !IsValidImage(img, out string errorMsg))
-                            {
-                                ModelState.AddModelError("partIimages", errorMsg);
-                                hasImageError = true;
-                            }
-                        }
-                    }
-                    if (partIIimages != null)
-                    {
-                        foreach (var img in partIIimages)
-                        {
-                            if (img.Length > 0 && !IsValidImage(img, out string errorMsg))
-                            {
-                                ModelState.AddModelError("partIIimages", errorMsg);
-                                hasImageError = true;
-                            }
-                        }
-                    }
-                    if (hasImageError)
-                    {
-                        // I-reload ang original report (kasama ang Images) mula sa database
-                        var originalReport = await _context.DamagedReports
-                            .Include(r => r.Images)
-                            .FirstOrDefaultAsync(r => r.Id == id);
-
-                        if (originalReport != null)
-                        {
-                            // I-copy ang text field changes (scalar) mula updatedReport patungo sa originalReport
-                            originalReport.Item = updatedReport.Item;
-                            originalReport.FixedAssetCode = updatedReport.FixedAssetCode;
-                            originalReport.DatePurchased = updatedReport.DatePurchased;
-                            originalReport.BrandSize = updatedReport.BrandSize;
-                            originalReport.LocationUser = updatedReport.LocationUser;
-                            originalReport.SerialNumber = updatedReport.SerialNumber;
-                            originalReport.Color = updatedReport.Color;
-                            originalReport.IncidentDateTime = updatedReport.IncidentDateTime;
-                            originalReport.CauseOfDamage = updatedReport.CauseOfDamage;
-                            originalReport.ImmediateAction = updatedReport.ImmediateAction;
-                            originalReport.RecommendedAction = updatedReport.RecommendedAction;
-                            originalReport.ReceivedByEmployeeId = updatedReport.ReceivedByEmployeeId;
-                            originalReport.ReceivedDateTime = updatedReport.ReceivedDateTime;
-
-                            // Kung GAD, kopyahin din ang Part IV fields (opsyonal)
-                            if (isGad)
-                            {
-                                originalReport.Findings = updatedReport.Findings;
-                                originalReport.Recommendation = updatedReport.Recommendation;
-                                originalReport.NegligenceFlag = updatedReport.NegligenceFlag;
-                                originalReport.NegligenceDetails = updatedReport.NegligenceDetails;
-                                originalReport.Remarks = updatedReport.Remarks;
-                                originalReport.AdministrativeDiscipline = updatedReport.AdministrativeDiscipline;
-                                originalReport.InvestigatedByEmployeeId = updatedReport.InvestigatedByEmployeeId;
-                                originalReport.VerifiedByEmployeeId = updatedReport.VerifiedByEmployeeId;
-                                originalReport.NotedByEmployeeId = updatedReport.NotedByEmployeeId;
-                            }
-
-                            ViewBag.Employees = new SelectList(_context.Employees, "Id", "Name", originalReport.ReceivedByEmployeeId);
-                            return View(originalReport);
-                        }
-
-                        // Fallback (kung wala ang original dahil sa error)
-                        ViewBag.Employees = new SelectList(_context.Employees, "Id", "Name", updatedReport.ReceivedByEmployeeId);
-                        return View(updatedReport);
-                    }
-
-                    // --- 2. Update scalar fields ---
-                    existing.Item = updatedReport.Item;
-                    existing.FixedAssetCode = updatedReport.FixedAssetCode;
-                    existing.DatePurchased = updatedReport.DatePurchased;
-                    existing.BrandSize = updatedReport.BrandSize;
-                    existing.LocationUser = updatedReport.LocationUser;
-                    existing.SerialNumber = updatedReport.SerialNumber;
-                    existing.Color = updatedReport.Color;
-                    existing.IncidentDateTime = updatedReport.IncidentDateTime;
-                    existing.CauseOfDamage = updatedReport.CauseOfDamage;
-                    existing.ImmediateAction = updatedReport.ImmediateAction;
-                    existing.RecommendedAction = updatedReport.RecommendedAction;
-                    existing.ReceivedByEmployeeId = updatedReport.ReceivedByEmployeeId;
-                    existing.ReceivedDateTime = updatedReport.ReceivedDateTime;
-                    existing.UpdatedAt = DateTime.Now;
-
-                    if (isGad)
-                    {
-                        existing.Findings = updatedReport.Findings;
-                        existing.Recommendation = updatedReport.Recommendation;
-                        existing.NegligenceFlag = updatedReport.NegligenceFlag;
-                        existing.NegligenceDetails = updatedReport.NegligenceDetails;
-                        existing.Remarks = updatedReport.Remarks;
-                        existing.AdministrativeDiscipline = updatedReport.AdministrativeDiscipline;
-                        existing.InvestigatedByEmployeeId = updatedReport.InvestigatedByEmployeeId;
-                        existing.VerifiedByEmployeeId = updatedReport.VerifiedByEmployeeId;
-                        existing.NotedByEmployeeId = updatedReport.NotedByEmployeeId;
-                    }
-
-                    await _context.SaveChangesAsync();   // <-- nandito na yung save ng scalar changes
-
-                    
-                    // --- 3. Upload folder (ensure exists) ---
-                    var uploadsFolder = GetUploadsFolder();
-                    if (!Directory.Exists(uploadsFolder))
-                        Directory.CreateDirectory(uploadsFolder);
-
-                    // --- 4. Add new Part I images (with validation) ---
-                    if (partIimages != null && partIimages.Any())
-                    {
-                        foreach (var img in partIimages)
-                        {
-                            if (img.Length > 0)
-                            {
-                                var uniqueName = Guid.NewGuid().ToString() + Path.GetExtension(img.FileName);
-                                var filePath = Path.Combine(uploadsFolder, uniqueName);
-                                using (var stream = new FileStream(filePath, FileMode.Create))
-                                {
-                                    await img.CopyToAsync(stream);
-                                }
-                                var imageRecord = new DamagedReportImage
-                                {
-                                    DamagedReportId = existing.Id,
-                                    Section = "PartI",
-                                    FileName = img.FileName,
-                                    FilePath = $"/{_config["UploadSettings:DamagedReportsPath"]}/{uniqueName}",
-                                    ContentType = img.ContentType,
-                                    UploadedAt = DateTime.Now
-                                };
-                                _context.DamagedReportImages.Add(imageRecord);
-                            }
-                        }
-                        await _context.SaveChangesAsync();
-                    }
-
-                    // --- 5. Add new Part II images (with validation) ---
-                    if (partIIimages != null && partIIimages.Any())
-                    {
-                        foreach (var img in partIIimages)
-                        {
-                            if (img.Length > 0)
-                            {
-                                var uniqueName = Guid.NewGuid().ToString() + Path.GetExtension(img.FileName);
-                                var filePath = Path.Combine(uploadsFolder, uniqueName);
-                                using (var stream = new FileStream(filePath, FileMode.Create))
-                                {
-                                    await img.CopyToAsync(stream);
-                                }
-                                var imageRecord = new DamagedReportImage
-                                {
-                                    DamagedReportId = existing.Id,
-                                    Section = "PartII",
-                                    FileName = img.FileName,
-                                    FilePath = $"/{_config["UploadSettings:DamagedReportsPath"]}/{uniqueName}",
-                                    ContentType = img.ContentType,
-                                    UploadedAt = DateTime.Now
-                                };
-                                _context.DamagedReportImages.Add(imageRecord);
-                            }
-                        }
-                        await _context.SaveChangesAsync();
                     }
 
                     TempData["SuccessMessage"] = "Report updated successfully.";
@@ -513,7 +347,7 @@ namespace DigitalFormsSystem.Controllers
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    if (!_context.DamagedReports.Any(e => e.Id == id)) return NotFound();
+                    if (!await _service.ReportExistsAsync(id)) return NotFound();
                     throw;
                 }
             }
@@ -522,142 +356,59 @@ namespace DigitalFormsSystem.Controllers
             return View(updatedReport);
         }
 
-        // GET: DamagedReport/Delete/5
+        // ============ DELETE (GET) ============
         public async Task<IActionResult> Delete(int id)
         {
-            var empId = HttpContext.Session.GetInt32("EmployeeId");
-            if (empId == null) return RedirectToAction("Login", "Account");
+            if (!_currentUserService.IsAuthenticated)
+                return RedirectToAction("Login", "Account");
 
-            var report = await _context.DamagedReports.FindAsync(id);
+            var report = await _service.GetReportWithDetailsAsync(id);
             if (report == null) return NotFound();
+
             if (report.RequestStatus != "Draft")
             {
                 TempData["ErrorMessage"] = "Only reports with 'Draft' status can be deleted.";
                 return RedirectToAction(nameof(Index));
             }
+
             return View(report);
         }
 
-        // POST: DamagedReport/Delete
+        // ============ DELETE (POST) ============
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var empId = HttpContext.Session.GetInt32("EmployeeId");
-            if (empId == null) return RedirectToAction("Login", "Account");
+            if (!_currentUserService.IsAuthenticated)
+                return RedirectToAction("Login", "Account");
 
-            var report = await _context.DamagedReports
-                .Include(r => r.Images)
-                .FirstOrDefaultAsync(r => r.Id == id);
-            if (report == null) return NotFound();
-
-            // Delete physical image files
-            var uploadsFolder = GetUploadsFolder();
-            foreach (var img in report.Images)
+            try
             {
-                var fullPath = Path.Combine(uploadsFolder, Path.GetFileName(img.FilePath));
-                if (System.IO.File.Exists(fullPath))
-                    System.IO.File.Delete(fullPath);
+                var uploadsPath = _config["UploadSettings:DamagedReportsPath"];
+                var success = await _service.DeleteReportAsync(id, _env.WebRootPath, uploadsPath);
+
+                if (!success) return NotFound();
+
+                TempData["SuccessMessage"] = "Report deleted successfully.";
+                return RedirectToAction(nameof(Index));
             }
-
-            _context.DamagedReports.Remove(report);
-            await _context.SaveChangesAsync();
-
-            TempData["SuccessMessage"] = "Report deleted successfully.";
-            return RedirectToAction(nameof(Index));
+            catch (Exception)
+            {
+                TempData["ErrorMessage"] = "An error occurred while deleting the report.";
+                return RedirectToAction(nameof(Index));
+            }
         }
 
-        // GET: DamagedReport/Print/5
+        // ============ PRINT ============
         public async Task<IActionResult> Print(int id)
         {
-            var empId = HttpContext.Session.GetInt32("EmployeeId");
-            if (empId == null) return RedirectToAction("Login", "Account");
+            if (!_currentUserService.IsAuthenticated)
+                return RedirectToAction("Login", "Account");
 
-            var report = await _context.DamagedReports
-                .Include(r => r.ReportedByEmployee)
-                .Include(r => r.ReceivedByEmployee)
-                .Include(r => r.Images)  // ✅ siguradong kasama ang mga larawan
-                .AsNoTracking()          // optional: basahin lang, hindi na kailangan i-save
-                .FirstOrDefaultAsync(r => r.Id == id);
-
+            var report = await _service.GetReportForPrintAsync(id);
             if (report == null) return NotFound();
 
-            // Siguraduhing ang Images ay hindi null (kung walang laman, gawing empty list)
-            if (report.Images == null)
-                report.Images = new List<DamagedReportImage>();
-
             return View(report);
-        }
-
-
-        //#HELPERS
-
-        private string GenerateControlNo(int retryCount = 0)
-        {
-            if (retryCount > 5)
-                throw new Exception("Unable to generate a unique control number after 5 attempts.");
-
-            var year = DateTime.Now.ToString("yy");
-            var month = DateTime.Now.ToString("MM");
-            var prefix = $"GAD-DR-{year}{month}-";
-
-            var lastRequest = _context.DamagedReports
-                .Where(r => r.ControlNo != null && r.ControlNo.StartsWith(prefix))
-                .OrderByDescending(r => r.ControlNo)
-                .Select(r => r.ControlNo)
-                .FirstOrDefault();
-
-            int nextNumber = 1;
-            if (lastRequest != null && lastRequest.Length > prefix.Length)
-            {
-                if (int.TryParse(lastRequest.Substring(prefix.Length), out int lastNum))
-                    nextNumber = lastNum + 1;
-            }
-
-            string newControlNo = $"{prefix}{nextNumber:D3}";
-
-            // Avoid race condition: check again if the generated number already exists
-            bool alreadyExists = _context.DamagedReports.Any(r => r.ControlNo == newControlNo);
-            if (alreadyExists)
-            {
-                return GenerateControlNo(retryCount + 1);
-            }
-
-            return newControlNo;
-        }
-
-        private bool IsValidImage(IFormFile file, out string errorMessage)
-        {
-            errorMessage = null;
-            // Read max file size from configuration; default to 5 MB if not set
-            var maxSizeMB = _config.GetValue<int>("UploadSettings:MaxFileSizeMB", 5);
-            if (file.Length > maxSizeMB * 1024 * 1024)
-            {
-                errorMessage = $"File {file.FileName} exceeds {maxSizeMB} MB limit.";
-                return false;
-            }
-            // Allowed extensions
-            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp" };
-            var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
-            if (!allowedExtensions.Contains(ext))
-            {
-                errorMessage = $"File {file.FileName} has an invalid extension. Allowed: {string.Join(", ", allowedExtensions)}";
-                return false;
-            }
-            // Allowed content types
-            var allowedTypes = new[] { "image/jpeg", "image/png", "image/gif", "image/bmp" };
-            if (!allowedTypes.Contains(file.ContentType.ToLowerInvariant()))
-            {
-                errorMessage = $"File {file.FileName} has an invalid content type.";
-                return false;
-            }
-            return true;
-        }
-
-        private string GetUploadsFolder()
-        {
-            var relativePath = _config["UploadSettings:DamagedReportsPath"];
-            return Path.Combine(_env.WebRootPath, relativePath);
         }
     }
 }

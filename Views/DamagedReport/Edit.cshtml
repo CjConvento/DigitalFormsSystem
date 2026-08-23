@@ -1,4 +1,4 @@
-﻿@model DigitalFormsSystem.Models.DamagedReport
+﻿@model DigitalFormsSystem.Core.Models.DamagedReport
 @{
     ViewData["Title"] = "Edit Damaged Report";
     var employees = ViewBag.Employees as SelectList;
@@ -14,9 +14,13 @@
         <ul>
             @foreach (var key in ViewData.ModelState.Keys)
             {
-                foreach (var error in ViewData.ModelState[key].Errors)
+                var errors = ViewData.ModelState[key]?.Errors;
+                if (errors != null && errors.Any())
                 {
-                    <li>@key: @error.ErrorMessage</li>
+                    foreach (var error in errors)
+                    {
+                        <li>@key: @error.ErrorMessage</li>
+                    }
                 }
             }
         </ul>
