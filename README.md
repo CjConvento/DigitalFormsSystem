@@ -417,8 +417,8 @@ EXEC sp_addrolemember 'db_datawriter', 'IIS APPPOOL\DigitalFormsSystemPool';
 ## 👤 Author
 
 **Natajimura**
-Junior .NET Software Engineer
-Developed during internship at HS Technologies (Phils.), Inc., continued as a personal portfolio project.
+- Junior .NET Software Engineer
+- Developed during internship at HS Technologies (Phils.), Inc., continued as a personal portfolio project.
 
 ## 📄 License
 
