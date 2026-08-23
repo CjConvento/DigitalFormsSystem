@@ -416,10 +416,10 @@ EXEC sp_addrolemember 'db_datawriter', 'IIS APPPOOL\DigitalFormsSystemPool';
 
 ## 👤 Author
 
-**Cyrenz Jonathan O. Convento**
-BSIT Graduate — San Sebastian College, Recoletos de Cavite
-Developed during internship at HS Technologies (Phils.), Inc., continued as a personal portfolio project.
+**Natajimura** (Cyrenz Jonathan O. Convento)
+- Junior .NET Software Engineer
+- Developed during internship at HS Technologies (Phils.), Inc., continued as a personal portfolio project.
 
 ## 📄 License
 
-This project is for portfolio and educational purposes only.
+This project is for internal system purposes only.
