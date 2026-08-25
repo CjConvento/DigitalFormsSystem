@@ -211,67 +211,88 @@
         </div>
     </div>
 
-    @* PART IV – FOLLOW-UP STATUS (To be filled-up by GAD only) *@
+    @* PART IV – FOLLOW-UP STATUS (FOR GAD Only) *@
     @if (isGad)
     {
         <div class="section" style="border:1px solid #ccc; padding:10px; margin-bottom:20px;">
-            <h4>PART IV – FOLLOW-UP STATUS (To be filled-up by GAD only)</h4>
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label asp-for="Findings"></label>
-                        <textarea asp-for="Findings" class="form-control" rows="3"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label asp-for="Recommendation"></label>
-                        <textarea asp-for="Recommendation" class="form-control" rows="3"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label asp-for="NegligenceFlag"></label>
-                        <select asp-for="NegligenceFlag" class="form-control">
-                            <option value="">-- Select --</option>
-                            <option value="1">Negligence of user/in-charge</option>
-                            <option value="2">Not negligence</option>
-                            <option value="3">Others</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label asp-for="NegligenceDetails"></label>
-                        <input asp-for="NegligenceDetails" class="form-control" />
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label asp-for="Remarks"></label>
-                        <textarea asp-for="Remarks" class="form-control" rows="3"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label asp-for="AdministrativeDiscipline"></label>
-                        <select asp-for="AdministrativeDiscipline" class="form-control">
-                            <option value="">-- Select --</option>
-                            <option value="true">Yes</option>
-                            <option value="false">No</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label asp-for="InvestigatedByEmployeeId"></label>
-                        <select asp-for="InvestigatedByEmployeeId" class="form-control" asp-items="employees">
-                            <option value="">-- Select --</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label asp-for="VerifiedByEmployeeId"></label>
-                        <select asp-for="VerifiedByEmployeeId" class="form-control" asp-items="employees">
-                            <option value="">-- Select --</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label asp-for="NotedByEmployeeId"></label>
-                        <select asp-for="NotedByEmployeeId" class="form-control" asp-items="employees">
-                            <option value="">-- Select --</option>
-                        </select>
-                    </div>
-                </div>
+            <h4>PART IV – FOLLOW-UP STATUS <span style="font-weight:normal; font-size:0.9rem;">(FOR GAD Only)</span></h4>
+            
+            <div class="table-responsive">
+                <table class="table table-bordered" id="followUpTable">
+                    <thead>
+                        <tr>
+                            <th style="width:15%;">Date</th>
+                            <th style="width:35%;">Status</th>
+                            <th style="width:25%;">Update by:</th>
+                            <th style="width:25%;">Noted by:</th>
+                            <th style="width:5%;">
+                                <button type="button" class="btn btn-sm btn-success add-row-btn" title="Add Row">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="followUpBody">
+                        @if (Model.FollowUps != null && Model.FollowUps.Any())
+                        {
+                            int index = 0;
+                            foreach (var followUp in Model.FollowUps.OrderBy(f => f.Id))
+                            {
+                                <tr class="follow-up-row">
+                                    <td>
+                                        <input type="date" name="FollowUps[@index].FollowUpDate" 
+                                            class="form-control form-control-sm" 
+                                            value="@followUp.FollowUpDate.ToString("yyyy-MM-dd")" />
+                                        <input type="hidden" name="FollowUps[@index].Id" value="@followUp.Id" />
+                                    </td>
+                                    <td>
+                                        <input type="text" name="FollowUps[@index].Status" 
+                                            class="form-control form-control-sm" 
+                                            value="@followUp.Status" placeholder="Status" />
+                                    </td>
+                                    <td>
+                                        <input type="text" name="FollowUps[@index].UpdateBy" 
+                                            class="form-control form-control-sm" 
+                                            value="@followUp.UpdateBy" placeholder="Update by" />
+                                    </td>
+                                    <td>
+                                        <input type="text" name="FollowUps[@index].NotedBy" 
+                                            class="form-control form-control-sm" 
+                                            value="@followUp.NotedBy" placeholder="Noted by" />
+                                    </td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-danger remove-row-btn" title="Remove Row">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                index++;
+                            }
+                        }
+                        else
+                        {
+                            <!-- Default 3 empty rows -->
+                            for (int i = 0; i < 3; i++)
+                            {
+                                <tr class="follow-up-row">
+                                    <td><input type="date" name="FollowUps[@i].FollowUpDate" class="form-control form-control-sm" /></td>
+                                    <td><input type="text" name="FollowUps[@i].Status" class="form-control form-control-sm" placeholder="Status" /></td>
+                                    <td><input type="text" name="FollowUps[@i].UpdateBy" class="form-control form-control-sm" placeholder="Update by" /></td>
+                                    <td><input type="text" name="FollowUps[@i].NotedBy" class="form-control form-control-sm" placeholder="Noted by" /></td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-danger remove-row-btn" title="Remove Row">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="text-muted small mt-2">
+                <i>HS Technologies (Phil's), Inc. — General Administration Department</i>
             </div>
         </div>
     }
@@ -281,10 +302,12 @@
         <input type="submit" value="Save Changes" class="btn btn-primary" />
         <a asp-action="Index" class="btn btn-secondary">Cancel</a>
     </div>
+
 </form>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/edit.js"></script> 
     <script src="~/js/edit-image-preview.js"></script>
     <script src="~/js/edit-formdatetime.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>

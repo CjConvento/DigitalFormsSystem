@@ -91,6 +91,38 @@
                 }
             </div>
         }
+
+        @* PART IV – FOLLOW-UP STATUS *@
+        @if (Model.FollowUps != null && Model.FollowUps.Any())
+        {
+            <hr />
+            <h4>Follow-up Status</h4>
+            <table class="table table-bordered table-striped">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Status</th>
+                        <th>Update by</th>
+                        <th>Noted by</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var followUp in Model.FollowUps.OrderBy(f => f.CreatedAt))
+                    {
+                        <tr>
+                            <td>@followUp.FollowUpDate.ToString("yyyy-MM-dd")</td>
+                            <td>@followUp.Status</td>
+                            <td>@followUp.UpdateBy</td>
+                            <td>@followUp.NotedBy</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <p class="text-muted">No follow-up status recorded yet.</p>
+        }
     </div>
 
     <div class="card-footer">

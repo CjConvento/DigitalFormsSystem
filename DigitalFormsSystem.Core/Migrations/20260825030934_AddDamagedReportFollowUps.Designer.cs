@@ -4,6 +4,7 @@ using DigitalFormsSystem.Core.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DigitalFormsSystem.Core.Migrations
 {
     [DbContext(typeof(DigitalFormsSystemContext))]
-    partial class DigitalFormsSystemContextModelSnapshot : ModelSnapshot
+    [Migration("20260825030934_AddDamagedReportFollowUps")]
+    partial class AddDamagedReportFollowUps
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

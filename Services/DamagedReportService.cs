@@ -52,6 +52,7 @@ namespace DigitalFormsSystem.Web.Services
                 .Include(r => r.ReportedByEmployee)
                 .Include(r => r.ReceivedByEmployee)
                 .Include(r => r.Images)
+                .Include(r => r.FollowUps)
                 .FirstOrDefaultAsync(r => r.Id == id);
         }
 
@@ -242,6 +243,7 @@ namespace DigitalFormsSystem.Web.Services
                 .Include(r => r.ReportedByEmployee)
                 .Include(r => r.ReceivedByEmployee)
                 .Include(r => r.Images)
+                .Include(r => r.FollowUps)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(r => r.Id == id);
 

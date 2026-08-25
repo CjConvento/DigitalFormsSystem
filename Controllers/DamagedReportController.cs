@@ -34,6 +34,10 @@ namespace DigitalFormsSystem.Controllers
             _context = context;  // <-- i-assign
         }
 
+        // ============================================================
+        // 📋 READ OPERATIONS
+        // ============================================================
+
         // ============ INDEX ============
         public async Task<IActionResult> Index()
         {
@@ -54,6 +58,10 @@ namespace DigitalFormsSystem.Controllers
             if (report == null) return NotFound();
             return View(report);
         }
+
+        // ============================================================
+        // ✏️ CREATE OPERATIONS
+        // ============================================================
 
         // ============ CREATE (GET) ============
         public IActionResult Create()
@@ -197,13 +205,22 @@ namespace DigitalFormsSystem.Controllers
             return View(report);
         }
 
+        // ============================================================
+        // 📝 UPDATE OPERATIONS
+        // ============================================================
+
         // ============ EDIT (GET) ============
         public async Task<IActionResult> Edit(int id)
         {
             if (!_currentUserService.IsAuthenticated)
                 return RedirectToAction("Login", "Account");
 
-            var report = await _service.GetReportWithDetailsAsync(id);
+            // ✅ Include FollowUps
+            var report = await _context.DamagedReports
+                .Include(r => r.Images)
+                .Include(r => r.FollowUps)  // ✅ ADD THIS
+                .FirstOrDefaultAsync(r => r.Id == id);
+
             if (report == null) return NotFound();
 
             if (report.RequestStatus != "Draft")
@@ -219,7 +236,14 @@ namespace DigitalFormsSystem.Controllers
         // ============ EDIT (POST) - Keep it simple for now ============
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, DamagedReport updatedReport, List<IFormFile> partIimages, List<IFormFile> partIIimages, List<int> deleteImageIds)
+        public async Task<IActionResult> Edit(
+            int id, 
+            DamagedReport updatedReport, 
+            List<IFormFile> partIimages, 
+            List<IFormFile> partIIimages, 
+            List<int> deleteImageIds,
+            List<DamagedReportFollowUp> FollowUps
+)
         {
             if (!_currentUserService.IsAuthenticated)
                 return RedirectToAction("Login", "Account");
@@ -324,8 +348,39 @@ namespace DigitalFormsSystem.Controllers
 
             if (ModelState.IsValid)
             {
+                // ✅ START TRANSACTION
+                using var transaction = await _context.Database.BeginTransactionAsync();
+
                 try
                 {
+                    // ============================================================
+                    // 1. SAVE FOLLOW-UPS (PART IV)
+                    // ============================================================
+                    if (FollowUps != null)
+                    {
+                        // Remove existing follow-ups
+                        var existingFollowUps = await _context.DamagedReportFollowUps
+                            .Where(f => f.DamagedReportId == id)
+                            .ToListAsync();
+                        _context.DamagedReportFollowUps.RemoveRange(existingFollowUps);
+
+                        // Add new follow-ups
+                        foreach (var followUp in FollowUps)
+                        {
+                            if (followUp.FollowUpDate != default &&
+                                !string.IsNullOrEmpty(followUp.Status))
+                            {
+                                followUp.DamagedReportId = id;
+                                followUp.CreatedAt = DateTime.Now;
+                                _context.DamagedReportFollowUps.Add(followUp);
+                            }
+                        }
+                        await _context.SaveChangesAsync();
+                    }
+
+                    // ============================================================
+                    // 2. UPDATE MAIN REPORT
+                    // ============================================================
                     var uploadsPath = _config["UploadSettings:DamagedReportsPath"];
                     var success = await _service.UpdateReportAsync(
                         updatedReport,
@@ -338,16 +393,26 @@ namespace DigitalFormsSystem.Controllers
 
                     if (!success)
                     {
+                        await transaction.RollbackAsync();
                         TempData["ErrorMessage"] = "Report not found or cannot be edited.";
                         return RedirectToAction(nameof(Index));
                     }
+
+                    // ✅ COMMIT TRANSACTION (both succeeded)
+                    await transaction.CommitAsync();
 
                     TempData["SuccessMessage"] = "Report updated successfully.";
                     return RedirectToAction(nameof(Index));
                 }
                 catch (DbUpdateConcurrencyException)
                 {
+                    await transaction.RollbackAsync();
                     if (!await _service.ReportExistsAsync(id)) return NotFound();
+                    throw;
+                }
+                catch (Exception)
+                {
+                    await transaction.RollbackAsync();
                     throw;
                 }
             }
@@ -355,6 +420,10 @@ namespace DigitalFormsSystem.Controllers
             ViewBag.Employees = new SelectList(_context.Employees, "Id", "Name", updatedReport.ReceivedByEmployeeId);
             return View(updatedReport);
         }
+
+        // ============================================================
+        // 🗑️ DELETE OPERATIONS
+        // ============================================================
 
         // ============ DELETE (GET) ============
         public async Task<IActionResult> Delete(int id)
@@ -398,6 +467,10 @@ namespace DigitalFormsSystem.Controllers
                 return RedirectToAction(nameof(Index));
             }
         }
+
+        // ============================================================
+        // 🖨 PRINT OPERATION
+        // ============================================================
 
         // ============ PRINT ============
         public async Task<IActionResult> Print(int id)

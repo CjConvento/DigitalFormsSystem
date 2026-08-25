@@ -130,3 +130,68 @@ $(document).ready(function () {
         }
     });
 });
+
+
+// ============================================================
+// PART IV – FOLLOW-UP STATUS (Add/Remove Rows)
+// ============================================================
+
+$(document).ready(function () {
+    // Add row
+    $(document).on('click', '.add-row-btn', function () {
+        var rowCount = $('#followUpBody .follow-up-row').length;
+        var newRow = `
+            <tr class="follow-up-row">
+                <td>
+                    <input type="date" name="FollowUps[${rowCount}].FollowUpDate" class="form-control form-control-sm" />
+                </td>
+                <td>
+                    <input type="text" name="FollowUps[${rowCount}].Status" class="form-control form-control-sm" placeholder="Status" />
+                </td>
+                <td>
+                    <input type="text" name="FollowUps[${rowCount}].UpdateBy" class="form-control form-control-sm" placeholder="Update by" />
+                </td>
+                <td>
+                    <input type="text" name="FollowUps[${rowCount}].NotedBy" class="form-control form-control-sm" placeholder="Noted by" />
+                </td>
+                <td>
+                    <button type="button" class="btn btn-sm btn-danger remove-row-btn" title="Remove Row">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+        $('#followUpBody').append(newRow);
+        updateRowIndices();
+    });
+
+    // Remove row
+    $(document).on('click', '.remove-row-btn', function () {
+        if ($('#followUpBody .follow-up-row').length > 1) {
+            $(this).closest('.follow-up-row').remove();
+            updateRowIndices();
+        } else {
+            alert('You must have at least one row.');
+        }
+    });
+
+    // Update row indices after add/remove
+    function updateRowIndices() {
+        $('#followUpBody .follow-up-row').each(function (index) {
+            $(this).find('input[name*="FollowUps["]').each(function () {
+                var name = $(this).attr('name');
+                if (name) {
+                    var newName = name.replace(/FollowUps\[\d+\]/, 'FollowUps[' + index + ']');
+                    $(this).attr('name', newName);
+                }
+            });
+            $(this).find('input[type="hidden"][name*="FollowUps["]').each(function () {
+                var name = $(this).attr('name');
+                if (name) {
+                    var newName = name.replace(/FollowUps\[\d+\]/, 'FollowUps[' + index + ']');
+                    $(this).attr('name', newName);
+                }
+            });
+        });
+    }
+});
