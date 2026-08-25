@@ -21,6 +21,7 @@ public partial class DigitalFormsSystemContext : DbContext
     public virtual DbSet<AuditLog> AuditLogs { get; set; }
 
     public virtual DbSet<DamagedReport> DamagedReports { get; set; }
+    public virtual DbSet<DamagedReportFollowUp> DamagedReportFollowUps { get; set; }
 
     public virtual DbSet<DamagedReportImage> DamagedReportImages { get; set; }
 

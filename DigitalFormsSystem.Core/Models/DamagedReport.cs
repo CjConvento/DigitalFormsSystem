@@ -69,4 +69,5 @@ public partial class DamagedReport
     public virtual Employee? NotedByEmployee { get; set; }
 
     public virtual ICollection<DamagedReportImage> Images { get; set; } = new List<DamagedReportImage>();
+    public virtual ICollection<DamagedReportFollowUp> FollowUps { get; set; } = new List<DamagedReportFollowUp>();
 }

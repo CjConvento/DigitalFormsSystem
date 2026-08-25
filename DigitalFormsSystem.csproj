@@ -5,6 +5,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <DisableImplicitProgramMain>true</DisableImplicitProgramMain>
+    <DefaultItemExcludes>$(DefaultItemExcludes);DigitalFormsSystem.Tests\**;DigitalFormsSystem.Core\**;DigitalFormsSystem.Blazor\**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>
