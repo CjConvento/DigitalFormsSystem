@@ -84,16 +84,52 @@
             </table>
         </div>
 
-        <!-- PART IV – FOLLOW-UP STATUS (blank) -->
+        <!-- PART IV – FOLLOW-UP STATUS -->
         <div class="section">
-            <div class="section-title">PART IV – FOLLOW-UP STATUS (for GAD only)</div>
-            <table class="print-table">
-                <thead><tr><th>Date</th><th>Status</th><th>Update by</th><th>Noted by</th></tr></thead>
-                <tbody>
-                    <tr><td>_________</td><td>_________</td><td>_________</td><td>_________</td></tr>
-                    <tr><td>_________</td><td>_________</td><td>_________</td><td>_________</td></tr>
-                </tbody>
-            </table>
+            <div class="section-title">PART IV – FOLLOW-UP STATUS (FOR GAD Only)</div>
+            
+            @if (Model.FollowUps != null && Model.FollowUps.Any())
+            {
+                <table class="print-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Update by</th>
+                            <th>Noted by</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var followUp in Model.FollowUps.OrderBy(f => f.CreatedAt))
+                        {
+                            <tr>
+                                <td>@followUp.FollowUpDate.ToString("yyyy-MM-dd")</td>
+                                <td>@followUp.Status</td>
+                                <td>@followUp.UpdateBy</td>
+                                <td>@followUp.NotedBy</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <table class="print-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Update by</th>
+                            <th>Noted by</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>_________</td><td>_________</td><td>_________</td><td>_________</td></tr>
+                        <tr><td>_________</td><td>_________</td><td>_________</td><td>_________</td></tr>
+                        <tr><td>_________</td><td>_________</td><td>_________</td><td>_________</td></tr>
+                    </tbody>
+                </table>
+            }
         </div>
 
         <!-- ========== IMAGES ON BACK PAGE ========== -->
