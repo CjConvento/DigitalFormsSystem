@@ -23,7 +23,12 @@
 
                     builder.Services.AddControllersWithViews();
                     builder.Services.AddDbContext<DigitalFormsSystemContext>(options =>
-                        options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+                    options.UseSqlServer(
+                        builder.Configuration.GetConnectionString("DefaultConnection"),
+                        sqlOptions => sqlOptions.EnableRetryOnFailure(
+                            maxRetryCount: 5,
+                            maxRetryDelay: TimeSpan.FromSeconds(10),
+                            errorNumbersToAdd: null)));
 
                     builder.Services.AddDistributedMemoryCache();
                     builder.Services.AddSession(options =>
@@ -50,7 +55,7 @@
                     builder.Services.AddScoped<IFixedAssetRequestService, FixedAssetRequestService>();
                     builder.Services.AddScoped<IDamagedReportService, DamagedReportService>();
                     builder.Services.AddScoped<INotificationService, NotificationService>();
-                    builder.Services.AddScoped<IAuditService, AuditService>();
+                    builder.Services.AddScoped<IAuditService, AuditService>();  
 
                     var app = builder.Build();
 

@@ -1,0 +1,5 @@
+{
+    "appService.preDeployTask": "publish-release",
+    "appService.deploySubpath": "bin\\Release\\net8.0\\publish",
+    "appService.defaultWebAppToDeploy": "/subscriptions/757249ae-342a-4d78-81b1-2937c9e744c1/resourceGroups/DFS-RG/providers/Microsoft.Web/sites/digitalformssystem-asp"
+}
