@@ -3,6 +3,11 @@ using DigitalFormsSystem.Core.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting; 
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
+using Microsoft.Extensions.Logging;
+using Microsoft.Identity.Client.Extensions.Msal;
 
 namespace DigitalFormsSystem.Web.Services
 {
@@ -10,18 +15,21 @@ namespace DigitalFormsSystem.Web.Services
     {
         private readonly DigitalFormsSystemContext _context;
         private readonly IWebHostEnvironment _env;
+        private readonly ILogger<DamagedReportService> _logger;
         private readonly IConfiguration _config;
         private readonly int _managerId;  
 
         public DamagedReportService(
             DigitalFormsSystemContext context, 
             IWebHostEnvironment env,
-            IConfiguration config
+            IConfiguration config,
+            ILogger<DamagedReportService> logger
             )
         {
             _context = context;
             _env = env;
             _config = config;
+            _logger = logger;
             _managerId = config.GetValue<int>("AppSettings:ManagerEmployeeId");
         }
 
@@ -70,46 +78,22 @@ namespace DigitalFormsSystem.Web.Services
             string? uploadsPath,
             int maxFileSizeMB)
         {
-            uploadsPath ??= "uploads/damagedreports";
-            report.ControlNo = GenerateControlNo();
-            report.CreatedAt = DateTime.Now;
-            report.UpdatedAt = DateTime.Now;
-            report.RequestStatus = "Draft";
+                // 1. Setup ng report (ISANG BESES LANG)
+                uploadsPath ??= "uploads/damagedreports";
+                report.ControlNo = GenerateControlNo();
+                report.CreatedAt = DateTime.Now;
+                report.UpdatedAt = DateTime.Now;
+                report.RequestStatus = "Draft";
 
-            _context.DamagedReports.Add(report);
-            await _context.SaveChangesAsync();
+                _context.DamagedReports.Add(report);
+                await _context.SaveChangesAsync();
 
-            var uploadsFolder = GetUploadsFolder(webRootPath, uploadsPath);
-            if (!Directory.Exists(uploadsFolder))
-                Directory.CreateDirectory(uploadsFolder);
+                // 2. Mag-save ng images (ISANG BESES LANG — depende sa provider)
+                await SaveImagesAsync(partIimages, report.Id, "PartI", webRootPath, uploadsPath, maxFileSizeMB);
+                await SaveImagesAsync(partIIimages, report.Id, "PartII", webRootPath, uploadsPath, maxFileSizeMB);
 
-            if (partIimages != null)
-            {
-                foreach (var img in partIimages)
-                {
-                    if (img.Length > 0)
-                    {
-                        var imageRecord = await SaveImageAsync(img, report.Id, "PartI", uploadsFolder, uploadsPath);
-                        _context.DamagedReportImages.Add(imageRecord);
-                    }
-                }
+                return report;
             }
-
-            if (partIIimages != null)
-            {
-                foreach (var img in partIIimages)
-                {
-                    if (img.Length > 0)
-                    {
-                        var imageRecord = await SaveImageAsync(img, report.Id, "PartII", uploadsFolder, uploadsPath);
-                        _context.DamagedReportImages.Add(imageRecord);
-                    }
-                }
-            }
-
-            await _context.SaveChangesAsync();
-            return report;
-        }
 
         // ============ UPDATE ============
         public async Task<bool> UpdateReportAsync(
@@ -133,11 +117,10 @@ namespace DigitalFormsSystem.Web.Services
             if (deleteImageIds != null && deleteImageIds.Any())
             {
                 var imagesToDelete = existing.Images.Where(i => deleteImageIds.Contains(i.Id)).ToList();
+                
                 foreach (var img in imagesToDelete)
                 {
-                    var fullPath = Path.Combine(GetUploadsFolder(webRootPath, uploadsPath), Path.GetFileName(img.FilePath));
-                    if (System.IO.File.Exists(fullPath))
-                        System.IO.File.Delete(fullPath);
+                    await DeleteImageAsync(img, webRootPath, uploadsPath);
                     _context.DamagedReportImages.Remove(img);
                 }
                 await _context.SaveChangesAsync();
@@ -179,35 +162,9 @@ namespace DigitalFormsSystem.Web.Services
 
             await _context.SaveChangesAsync();
 
-            var uploadsFolder = GetUploadsFolder(webRootPath, uploadsPath);
-            if (!Directory.Exists(uploadsFolder))
-                Directory.CreateDirectory(uploadsFolder);
-
-            if (partIimages != null && partIimages.Any())
-            {
-                foreach (var img in partIimages)
-                {
-                    if (img.Length > 0)
-                    {
-                        var imageRecord = await SaveImageAsync(img, existing.Id, "PartI", uploadsFolder, uploadsPath);
-                        _context.DamagedReportImages.Add(imageRecord);
-                    }
-                }
-                await _context.SaveChangesAsync();
-            }
-
-            if (partIIimages != null && partIIimages.Any())
-            {
-                foreach (var img in partIIimages)
-                {
-                    if (img.Length > 0)
-                    {
-                        var imageRecord = await SaveImageAsync(img, existing.Id, "PartII", uploadsFolder, uploadsPath);
-                        _context.DamagedReportImages.Add(imageRecord);
-                    }
-                }
-                await _context.SaveChangesAsync();
-            }
+            // Magdagdag ng mga bagong imahe
+            await SaveImagesAsync(partIimages, existing.Id, "PartI", webRootPath, uploadsPath, maxFileSizeMB);
+            await SaveImagesAsync(partIIimages, existing.Id, "PartII", webRootPath, uploadsPath, maxFileSizeMB);
 
             return true;
         }
@@ -223,12 +180,10 @@ namespace DigitalFormsSystem.Web.Services
 
             if (report == null) return false;
 
-            var uploadsFolder = GetUploadsFolder(webRootPath, uploadsPath);
+            // Burahin ang lahat ng imahe (Azure o Local)
             foreach (var img in report.Images)
             {
-                var fullPath = Path.Combine(uploadsFolder, Path.GetFileName(img.FilePath));
-                if (System.IO.File.Exists(fullPath))
-                    System.IO.File.Delete(fullPath);
+                await DeleteImageAsync(img, webRootPath, uploadsPath);
             }
 
             _context.DamagedReports.Remove(report);
@@ -254,30 +209,161 @@ namespace DigitalFormsSystem.Web.Services
         }
 
         // ============ HELPERS ============
-        private async Task<DamagedReportImage> SaveImageAsync(
-            IFormFile file,
+        private async Task SaveImagesAsync(
+            List <IFormFile>? images,
             int reportId,
             string section,
-            string uploadsFolder,
-            string uploadsPath)
+            string webRootPath,
+            string uploadsPath,
+            int maxFileSizeMB)
         {
-            var uniqueName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName);
-            var filePath = Path.Combine(uploadsFolder, uniqueName);
+            if (images == null || images.Count == 0) return;
 
-            using (var stream = new FileStream(filePath, FileMode.Create))
+            var storageProvider = _config["StorageSettings:Provider"] ?? "LocalIIS";
+            var connString = _config["StorageSettings:ConnectionString"];
+            var containerName = _config["StorageSettings:ContainerName"] ?? "damaged-reports";
+
+            _logger.LogInformation("Saving {Count} images for report {ReportId} using provider: {Provider}", 
+            images.Count, reportId, storageProvider);
+
+            var uploadsFolder = GetUploadsFolder(webRootPath, uploadsPath);
+
+            if (storageProvider == "AzureBlob" && !string.IsNullOrEmpty(connString))
             {
-                await file.CopyToAsync(stream);
+                // ☁️ AZURE BLOB LOGIC (BAGO)
+                var blobServiceClient = new BlobServiceClient(connString);
+                var containerClient = blobServiceClient.GetBlobContainerClient(containerName);
+                await containerClient.CreateIfNotExistsAsync(PublicAccessType.Blob);
+
+                foreach (var file in images)
+                {
+                    if (file.Length == 0) continue;
+                    if (!IsValidImage(file, out _, maxFileSizeMB)) continue;
+
+                    var uniqueName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName);
+                    var blobClient = containerClient.GetBlobClient($"{section.ToLower()}/{uniqueName}");
+
+                    using (var stream = file.OpenReadStream())
+                    {
+                        await blobClient.UploadAsync(stream, new BlobUploadOptions
+                        {
+                            HttpHeaders = new BlobHttpHeaders { ContentType = file.ContentType }
+                        });
+                    }
+
+                    var imageRecord = new DamagedReportImage
+                    {
+                        DamagedReportId = reportId,
+                        Section = section,
+                        FileName = file.FileName,
+                        FilePath = blobClient.Uri.ToString(), // ✅ IBA: Buong URL sa Azure
+                        ContentType = file.ContentType,
+                        UploadedAt = DateTime.Now
+                    };
+                    _context.DamagedReportImages.Add(imageRecord);
+                }
+            }
+            else
+            {
+                // 💻 LOCAL IIS LOGIC (KAPAREHO NG LUMANG SaveImageAsync)
+                if (!Directory.Exists(uploadsFolder))
+                    Directory.CreateDirectory(uploadsFolder);
+
+                foreach (var file in images)
+                {
+                    if (file.Length == 0) continue;
+                    if (!IsValidImage(file, out _, maxFileSizeMB)) continue;
+
+                    var uniqueName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName);
+                    var filePath = Path.Combine(uploadsFolder, uniqueName);
+
+                    using (var stream = new FileStream(filePath, FileMode.Create))
+                    {
+                        await file.CopyToAsync(stream);
+                    }
+
+                    var imageRecord = new DamagedReportImage
+                    {
+                        DamagedReportId = reportId,
+                        Section = section,
+                        FileName = file.FileName,
+                        FilePath = $"/{uploadsPath}/{uniqueName}", // ✅ KAPAREHO NG LUMANG FORMAT
+                        ContentType = file.ContentType,
+                        UploadedAt = DateTime.Now
+                    };
+                    _context.DamagedReportImages.Add(imageRecord);
+                }
             }
 
-            return new DamagedReportImage
+            await _context.SaveChangesAsync();
+        }
+
+        // ✅ BAGONG HELPER
+        private async Task DeleteImageAsync(DamagedReportImage image, string webRootPath, string uploadsPath)
+        {
+            var storageProvider = _config["StorageSettings:Provider"] ?? "LocalIIS";
+            var connString = _config["StorageSettings:ConnectionString"];
+            var containerName = _config["StorageSettings:ContainerName"] ?? "damaged-reports";
+
+            if (storageProvider == "AzureBlob" && !string.IsNullOrEmpty(connString))
             {
-                DamagedReportId = reportId,
-                Section = section,
-                FileName = file.FileName,
-                FilePath = $"/{uploadsPath}/{uniqueName}",
-                ContentType = file.ContentType,
-                UploadedAt = DateTime.Now
-            };
+                // ☁️ BURAHIN MULA SA AZURE
+                try
+                {
+                    var uri = new Uri(image.FilePath);
+                    var blobClient = new BlobClient(connString, containerName, uri.Segments.Last());
+                    
+                    var response = await blobClient.DeleteIfExistsAsync();
+
+                    if (response.Value)
+                    {
+                        _logger.LogInformation("Successfully deleted blob: {BlobName} for report {ReportId}", 
+                            uri.Segments.Last(), image.DamagedReportId);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Blob not found: {BlobName} for report {ReportId}", 
+                            uri.Segments.Last(), image.DamagedReportId);
+                    }
+                }
+                catch (Exception ex)
+                { 
+                // Log the error with context
+                _logger.LogError(ex, "Failed to delete blob from Azure. BlobName: {BlobName}, ReportId: {ReportId}, FilePath: {FilePath}", 
+                    Path.GetFileName(image.FilePath), 
+                    image.DamagedReportId, 
+                    image.FilePath);
+                
+                // Optional: Re-throw if you want the operation to fail
+                // throw;    
+                }
+            }
+            else
+            {
+                try
+                {
+                    // 💻 BURAHIN MULA SA LOCAL FILESYSTEM
+                    var uploadsFolder = GetUploadsFolder(webRootPath, uploadsPath);
+                    var fileName = Path.GetFileName(image.FilePath);
+                    var fullPath = Path.Combine(uploadsFolder, fileName);
+
+
+                    if (System.IO.File.Exists(fullPath))
+                    {
+                        System.IO.File.Delete(fullPath);
+                        _logger.LogInformation("Successfully deleted local file: {FilePath}", fullPath);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Local file not found: {FilePath}", fullPath);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to delete local file. FilePath: {FilePath}, ReportId: {ReportId}", 
+                        image.FilePath, image.DamagedReportId);
+                }
+            }
         }
 
         public string GenerateControlNo(int retryCount = 0)
