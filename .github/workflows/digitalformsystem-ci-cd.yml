@@ -3,12 +3,13 @@ name: Deploy DigitalFormsSystem to Azure
 on:
   push:
     branches:
-      - master              # Nagti-trigger kapag may push sa master branch
-      - decouple-api-blazor # Kasama rin ang decoupling branch (for testing)
+      - master
+      - decouple-api-blazor
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
-    runs-on: windows-latest  # Gamit ang Windows runner (para sa IIS compatibility)
+    runs-on: windows-latest
 
     steps:
       - name: Checkout Source Code
@@ -17,16 +18,16 @@ jobs:
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'  # .NET 8 framework
+          dotnet-version: '8.0.x'
 
-      - name: Clean and Publish Project (32-Bit Build)
+      - name: Clean and Publish Project
         run: |
-          dotnet clean
-          dotnet publish DigitalFormsSystem/DigitalFormsSystem.csproj -c Release -r win-x86 --self-contained false -o ./publish
+          dotnet clean DigitalFormsSystem.csproj
+          dotnet publish DigitalFormsSystem.csproj -c Release -r win-x86 --self-contained false -o ./publish
 
-      - name: Deploy Compiled Core to Azure Web App
+      - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'digitalformssystem-asp'  # <-- Palitan ng iyong Azure App Service name
+          app-name: 'digitalformssystem-asb-bpgewhabpb'
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: ./publish
