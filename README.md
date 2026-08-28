@@ -1,57 +1,56 @@
 # Digital Forms System
 
-**Status: Active development** — core modules and auth are functional; search/filter and a few other features are still in progress (see [Roadmap](#-roadmap)).
+**Status: Active Development** — Core modules and authentication are fully functional; advanced search filters and multi-stage workflow expansions are currently in progress (see [Roadmap](#-roadmap)).
 
-A fullstack internal web application built for **HS Technologies (Phils.), Inc. (HST)**, developed during a 600-hour internship in the MIS-IT section. The system digitizes two core company processes — **Fixed Asset Requests** and **Damaged Reports** — replacing manual paper-based workflows with a role-based, database-driven web application.
+A full-stack internal enterprise web application engineered for **HS Technologies (Phils.), Inc. (HST)**, developed during a 600-hour industry internship within the MIS-IT Department. The system digitizes critical corporate procedures — **Fixed Asset Requests** and **Damaged Reports** — replacing manual, paper-based operations with a secure, role-based, database-driven solution designed for **683 internal employees**.
 
-> ⚠️ **Data notice:** This repository's code and version history contain no real employee data — all seed data used for local development is synthetic. However, this system is intended for actual deployment at HST, and real employee records will be used during production testing and rollout (managed directly by HST's IT Manager on internal infrastructure). Real company data must never be committed to this repo, included in screenshots/demos, or generated/stored outside of the production environment.
+> **Security & Data Privacy Notice:** This public repository contains **zero real employee data or corporate records** — all data utilized during development and testing is entirely synthetic and generated via local scripting tools. Production deployment, including real employee synchronization, is managed strictly on-premise by HST's IT Infrastructure team within their private network.
 
 ---
 
-## 📋 Business Context
+## Business Architecture Context
 
-HST previously ran these two processes on paper forms (`HRDA-F-2.10.6.1` for Fixed Asset Requests, `HRDA-F-2.9.10.8` for Damaged Reports), routed manually between departments for approval and filing.
+HST previously handled these internal processes via standardized physical paper routing forms (`HRDA-F-2.10.6.1` and `HRDA-F-2.9.10.8`), hand-carried across departments for multi-stage approvals.
 
-| | Paper-based | This system |
+| Operation Feature | Legacy Paper-Based Workflow | Digitized Enterprise System |
 |---|---|---|
-| Submission | Physical form, hand-carried to GAD-HR | Web form, submitted online |
-| Tracking | Status written on the same sheet | Status history stored in the database |
-| Visibility | Whoever has the physical copy | Role-based — Employee sees own records, IT Manager sees all |
-| Records | Filed in cabinets | Queryable in SQL Server |
+| **Submission** | Physical form routing, hand-carried to GAD-HR | Instant digital web form submission |
+| **Tracking** | Manual pen-and-paper signature tracking | Automated real-time state logs in SQL Server |
+| **Data Visibility** | Restricted to physical document possessor | Role-Based Access (Employees view own; IT Admin views all) |
+| **Record Archiving** | Physical file cabinets, manual auditing | Secure, fully queryable indexing via Relational Database |
 
-The system replicates the same approval fields and workflow from the original forms, just digitized.
-
----
-
-## ✨ Features
-
-- **Role-based access control (RBAC)** — separate views and permissions for IT Manager and Employee roles
-- **Session-based authentication** with BCrypt password hashing
-- **Secure random password generation** for employee onboarding (`EmployeeNo@Random`)
-- **Fixed Asset Request module** — submit, track, and manage asset requests
-- **Damaged Report module** — report and manage damaged equipment/tools
-- **Audit logging** — tracks all user actions (login, create, edit, delete)
-- **Admin Dashboard** — with statistics and audit log viewer
+The digitized application accurately replicates the business logic, approval chains, and structural fields of the original enterprise forms.
 
 ---
 
-## 🛠️ Tech Stack
+## System Features
 
-| Layer | Technology |
+- **Role-Based Access Control (RBAC):** Strict isolation of user views, operations, and dashboard access based on authorization tiers (Administrator vs. Employee).
+- **Session-Based Authentication:** Secure user management utilizing encrypted cookie sessions with automatic 30-minute idle timeouts.
+- **Cryptographic Security:** Secure password implementation powered by the BCrypt hashing algorithm (`BCrypt.Net-Next`) for zero plain-text storage.
+- **Automated Onboarding Utilities:** Cryptographically secure random temporary password generation (`RandomNumberGenerator`) adhering to safe defaults (`EmployeeNo@Random`).
+- **Audit Logging System:** Comprehensive internal tracking that records every system transaction, data modification, and login event for enterprise compliance.
+- **Administrative Dashboard:** Centralized console rendering operational metrics, system health logs, and audit trails.
+
+---
+
+## Technology Stack
+
+| Architecture Layer | Component / Technology |
 |---|---|
-| Backend | C# / ASP.NET Core MVC (.NET 8.0) |
-| Database | SQL Server (Entity Framework Core 8.0.0) |
-| Auth | Session-based auth, BCrypt.Net-Next for password hashing |
-| Password Generation | Cryptographically secure random (`RandomNumberGenerator`) |
-| PDF Generation | Python script (external, admin-run only) |
-| Hosting | IIS (ASP.NET Core Hosting Bundle + In-Process hosting) |
-| Version Control | Git / GitHub |
+| **Frontend UI** | ASP.NET Core Razor Views |
+| **Backend Core** | C# / ASP.NET Core (.NET 8.0) |
+| **Data / ORM** | SQL Server via Entity Framework Core (EF Core 8.0) |
+| **Security / Auth** | BCrypt Password Hashing & Cryptographically Secure Pseudo-Random Number Generators (CSPRNG) |
+| **Automation Utilities** | Python 3.x (Admin script for discrete, local cryptography management) |
+| **Target Deployment** | On-Premise Internet Information Services (IIS) Server (In-Process Hosting Configuration) |
+| **Version Control** | Git / GitHub Workflows |
 
 ---
 
-## 🏗️ Architecture
+## Architecture Design
 
-The system follows a layered architecture:
+The system follows a decoupled Layered System Architecture to ensure maintainability, clear separation of concerns, and clean testing boundaries:
 
 ```
 Presentation Layer   →  Razor Views, CSS/JS
@@ -64,92 +63,79 @@ Database Layer       →  SQL Server (Employees, FixedAssetRequests, DamagedRepo
                          AuditLogs, AssetTypes, Approvals, StatusHistory, PrintLogs)
 ```
 
-Each layer only depends on the layer directly below it, keeping business logic out of controllers and making the data access layer swappable/testable.
-
 ---
 
-## 📁 Project Structure
+## Project Directory Tree
 
 ```
 DigitalFormsSystem/
-├── DigitalFormsSystem/                        # MVC Web project (Controllers, Views, Program.cs)
-├── DigitalFormsSystem.Core/                   # Shared class library (Models, Interfaces, Services, Helpers, DbContext)
-├── Data/                                      # DbInitializer (password seeding)
-├── Helpers/                                   # PasswordGenerator (random password generation)
-├── scripts/                                   # Deployment automation scripts
-│   ├── redeploy.ps1                           # Stop app pool → publish → start app pool
-│   └── redeploy.bat                           # Double-click wrapper for redeploy.ps1
-├── generate_employee_passwords_from_db.py     # Python script for manual PDF export (admin only)
-├── appsettings.template.json                  # Configuration template (copy to appsettings.json)
-├── Directory.Build.props                      # Shared MSBuild properties
+├── DigitalFormsSystem/                          # MVC Web project (Controllers, Views, Program.cs)
+├── DigitalFormsSystem.Core/                     # Shared class library (Models, Interfaces, Services, Helpers, DbContext)
+├── Data/                                        # DbInitializer (password seeding)
+├── Helpers/                                     # PasswordGenerator (random password generation)
+├── scripts/                                     # Deployment automation scripts
+│   ├── redeploy.ps1                             # Stop app pool → publish → start app pool
+│   └── redeploy.bat                             # Double-click wrapper for redeploy.ps1
+|   └── generate_employee_passwords_from_db.py   # Python script for manual PDF passwords export (admin only)
+├── appsettings.template.json                    # Configuration template (copy to appsettings.json)
+├── Directory.Build.props                        # Shared MSBuild properties
 └── DigitalFormsSystem.sln
 ```
 
 ---
 
-## 🔐 Security Features
+## System Hardening & Security Implementations
 
-- **BCrypt password hashing** — passwords are never stored in plain text
-- **Cryptographically secure random password generation** — `EmployeeNo@Random` format (e.g., `HS9501@XK9#mP2`)
-- **Role-based access control** — only the IT Manager can see all requests/reports and audit logs
-- **Audit logging** — all login attempts, CRUD operations, and sensitive actions are logged
-- **Session-based authentication** with 30-minute timeout
-- **No sensitive data exposed** — `appsettings.json` is excluded from version control
-- **No in-app credential export** — the employee credentials PDF is generated by a separate, admin-run script (see [Manual Credential Export](#-manual-credential-export)), not by a button in the web UI
+- **Zero Plain-Text Retention:** All user passwords pass through a salted BCrypt work factor prior to storage.
+- **Out-of-Band Document Generation:** The temporary credential export utility is intentionally decoupled from the web application layer. It can only be executed locally via an administrative script requiring direct environment access, entirely eliminating web-based bulk enumeration attacks.
+- **Environment Isolation:** Crucial infrastructure metrics, connection credentials, and master keys are stored outside the code repository using localized `appsettings.json` overlays.
+- **Administrative Transparency:** Full audit trail implementation tracking login failures, row edits, and systemic parameter shifts.
 
 ---
 
-## 🚀 Local Setup
+## Local Developer Staging Setup
 
 ### Prerequisites
-
 - [.NET 8.0 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/8.0)
-- SQL Server / SQL Server Express
-- IIS with [ASP.NET Core Hosting Bundle](https://dotnet.microsoft.com/en-us/download/dotnet/8.0) (for IIS deployment; optional for local `dotnet run`)
-- Python 3.x (for manual PDF generation)
+- Microsoft SQL Server
+- IIS with [ASP.NET Core Hosting Bundle](https://dotnet.microsoft.com/en-us/download/dotnet/8.0) (for IIS deployment) 
+- Python 3.x (For administrative CLI execution)
 
-### Configuration
+### Configuration Workflows
 
-1. Clone the repo:
+1. Clone the repository:
    ```bash
    git clone https://github.com/CjConvento/DigitalFormsSystem.git
    cd DigitalFormsSystem/DigitalFormsSystem
    ```
 
-2. Copy `appsettings.template.json` to `appsettings.json`:
+2. Establish local environment settings:
    ```bash
    cp appsettings.template.json appsettings.json
    ```
 
-3. Update the connection string in `appsettings.json` to match your SQL Server instance:
+3. Update the Target Database String inside your local `appsettings.json`:
    ```json
    "ConnectionStrings": {
      "DefaultConnection": "Server=localhost\\SQLEXPRESS;Database=DigitalFormsSystem;Trusted_Connection=True;TrustServerCertificate=True;"
    }
    ```
 
-4. Apply EF Core migrations:
+4. Execute Entity Framework Relational Migrations:
    ```bash
    dotnet ef database update --project DigitalFormsSystem.Core --startup-project DigitalFormsSystem
    ```
 
-5. Run locally:
+5. Run the app:
    ```bash
    dotnet run
    ```
 
-6. Access the application at `http://localhost:5280`.
-
-### Default Login
-
-| Role | Employee No. | Password |
-|---|---|---|
-| Admin | HS1005-1301 | Randomly generated (check database or use the Python script) |
-| Employee | HS9501-0019 | Randomly generated |
+6. Access the application at `http://localhost:{SERVER PORT}`.
 
 ---
 
-## 📄 Manual Credential Export
+## Manual Credential Export
 
 The system does **not** include a PDF download button in the web UI, by design. Instead, the IT Manager can generate the employee credentials PDF locally using a separate script:
 
@@ -161,51 +147,33 @@ This keeps credential export out of the web attack surface entirely — it requi
 
 ---
 
-## 🚀 Complete Deployment Guide (for HST server)
+## On-Premise Enterprise Deployment Guide (for HST server)
 
-### Prerequisites (on the server)
-
-- Windows Server with IIS installed
+### Server Infrastructure Prerequisites
+- Windows Server running Active Internet Information Services (IIS)
 - [.NET 8.0 Runtime and ASP.NET Core Hosting Bundle](https://dotnet.microsoft.com/en-us/download/dotnet/8.0) — install both `dotnet-hosting-8.0.x-win.exe` and `dotnet-runtime-8.0.x-win.exe`
 - SQL Server (any edition), with a `DigitalFormsSystem` database created
-- Windows Admin rights (for IIS configuration)
+- Windows Administrator Rights (for IIS configuration)
 
-### Step 1: Deploy the Code
+### Step-by-Step Deployment Lifecycle
 
-**Option A — via Git (recommended):**
+#### Step 1: Deploy Compilation Artifacts
+Build production-ready release artifacts locally or run the compiler on the machine:
 ```powershell
-cd C:\inetpub\wwwroot
-git clone https://github.com/CjConvento/DigitalFormsSystem.git
-cd DigitalFormsSystem/DigitalFormsSystem
-```
-
-**Option B — manual copy:**
-```powershell
-# From your dev machine
 dotnet publish -c Release -o C:\Publish\DigitalFormsSystem
-
-# Then copy the contents of C:\Publish\DigitalFormsSystem to the server, into:
-# C:\inetpub\wwwroot\DigitalFormsSystem
+# Deploy target output files safely into: C:\inetpub\wwwroot\DigitalFormsSystem
 ```
 
-### Step 2: Configure appsettings.json
-
-On the server, create `appsettings.json` from `appsettings.template.json`:
-
+#### Step 2: Establish Corporate Production Configuration
+Generate a secure `appsettings.json` file inside the host destination folder:
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Server=YOUR_SERVER_NAME;Database=DigitalFormsSystem;Trusted_Connection=True;TrustServerCertificate=True;"
+    "DefaultConnection": "Server=INTERNAL_SQL_SERVER_IP;Database=DigitalFormsSystem;Trusted_Connection=True;TrustServerCertificate=True;"
   },
   "AppSettings": {
     "ManagerEmployeeId": 778,
-    "PasswordMasterKey": "YOUR_MASTER_KEY_HERE"
-  },
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "Microsoft.AspNetCore": "Warning"
-    }
+    "PasswordMasterKey": "COMPLEX_PRODUCTION_CRYPTOGRAPHIC_KEY"
   },
   "AllowedHosts": "*"
 }
@@ -218,7 +186,7 @@ On the server, create `appsettings.json` from `appsettings.template.json`:
 
 > ⚠️ `appsettings.json` is excluded from version control. Never commit the real connection string or master key.
 
-### Step 3: Create IIS Application Pool
+#### Step 3: Configure Dedicated IIS Application Pool
 
 1. Open IIS Manager
 2. Right-click **Application Pools** → **Add Application Pool**
@@ -228,7 +196,7 @@ On the server, create `appsettings.json` from `appsettings.template.json`:
 6. Start Application Pool Immediately: checked
 7. OK
 
-### Step 4: Create IIS Website
+#### Step 4: Provision Web Site Architecture
 
 1. Right-click **Sites** → **Add Website**
 2. Site name: `DigitalFormsSystem`
@@ -237,10 +205,10 @@ On the server, create `appsettings.json` from `appsettings.template.json`:
 5. Binding: Type `http`, IP `All Unassigned`, Port `80` (or `8080` for internal-only access), Host name blank unless using a domain
 6. OK
 
-### Step 5: Set Folder Permissions
-
+#### Step 5: Establish Process Permissions
+Grant the IIS Application Pool Identity appropriate access permissions to execute and run the runtime files safely:
 ```powershell
-icacls C:\inetpub\wwwroot\DigitalFormsSystem\DigitalFormsSystem /grant "IIS AppPool\DigitalFormsSystemPool:(OI)(CI)M"
+icacls C:\inetpub\wwwroot\DigitalFormsSystem /grant "IIS AppPool\DigitalFormsSystemPool:(OI)(CI)M"
 ```
 
 ### Step 6: Run Database Migrations
@@ -289,16 +257,16 @@ dotnet run
 # ✅ Password seeding completed! 683 employees updated.
 ```
 
-### Step 8: Generate Initial Passwords for Gilbert
+### Step 8: Generate Initial Passwords for IT Admin & Employees
 
 ```powershell
 python generate_employee_passwords_from_db.py
 # Output: employee_credentials_from_db.pdf
 ```
 
-Hand this PDF to **Gilbert (IT Manager)** directly, via a secure channel (in person or encrypted transfer) — not email or chat. It contains every employee's initial password and should never sit in a shared folder or be forwarded further than necessary.
+This PDF is handed to IT Manager directly. It contains every employee's initial password and should never sit in a shared folder or be forwarded further than necessary.
 
-> ⚠️ **This is a one-time setup step.** Once the PDF has been generated and confirmed to be in Gilbert's hands, the `PlainTextPassword` column should be **removed entirely** — not just cleared — since it has no further purpose after this initial seeding. In the source code:
+> ⚠️ **This is a one-time setup step.** Once the PDF has been generated and confirmed by the IT Manager, the `PlainTextPassword` column should be **removed entirely** — not just cleared — since it has no further purpose after this initial seeding. In the source code:
 > 1. Remove the `PlainTextPassword` property from `Employee.cs`
 > 2. Remove any references to it in `DbInitializer.cs`
 > 3. Generate and apply a migration to drop the column:
@@ -325,7 +293,7 @@ New-NetFirewallRule -DisplayName "DigitalFormsSystem-HTTP" -Direction Inbound -P
 2. Bind HTTPS to port 443
 3. Enable **Require SSL** in IIS
 
-### Step 12: Redeploying After Code Changes
+### Step 12: Redeploying After Code Changes (For Developer)
 
 Use the existing `scripts/redeploy.ps1` (see [Project Structure](#-project-structure)) — it already handles stop → publish → start:
 
@@ -336,7 +304,7 @@ cd scripts
 
 ---
 
-## 📋 Quick Reference Card (for HST IT)
+## Quick Reference Card (for HST IT)
 
 | Item | Value |
 |---|---|
@@ -345,7 +313,6 @@ cd scripts
 | Physical Path | `C:\inetpub\wwwroot\DigitalFormsSystem\DigitalFormsSystem` |
 | Port | 80 (HTTP) / 443 (HTTPS) |
 | Database | SQL Server: `DigitalFormsSystem` |
-| Admin Login | `HS1005-1301` (Gilbert) |
 
 ### Support
 
@@ -391,7 +358,7 @@ EXEC sp_addrolemember 'db_datawriter', 'IIS APPPOOL\DigitalFormsSystemPool';
 
 ---
 
-## 🔄 Recent Updates
+## Recent Updates
 
 - **Password generation** — migrated from a predictable `HST{EmployeeNo}!` pattern to cryptographically random `EmployeeNo@Random` values, hashed with BCrypt before storage
 - **Credential export** — moved out of the web app entirely, into an external, admin-run Python script (no in-app download endpoint)
@@ -414,12 +381,8 @@ EXEC sp_addrolemember 'db_datawriter', 'IIS APPPOOL\DigitalFormsSystemPool';
 
 ---
 
-## 👤 Author
+## Author
 
 **Natajimura** (Cyrenz Jonathan O. Convento)
 - Junior .NET Software Engineer
-- Developed during internship at HS Technologies (Phils.), Inc., continued as a personal portfolio project.
-
-## 📄 License
-
-This project is for internal system purposes only.
+- Core System Architecture developed as part of official enterprise internship duties at HS Technologies, actively maintained as a software development portfolio asset.
