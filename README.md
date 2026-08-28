@@ -383,6 +383,6 @@ EXEC sp_addrolemember 'db_datawriter', 'IIS APPPOOL\DigitalFormsSystemPool';
 
 ## Author
 
-**Natajimura** (Cyrenz Jonathan O. Convento)
+[Natajimura](https://github.com/CjConvento) - Cj Convento
 - Junior .NET Software Engineer
 - Core System Architecture developed as part of official enterprise internship duties at HS Technologies, actively maintained as a software development portfolio asset.
