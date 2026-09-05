@@ -1,6 +1,8 @@
 # Digital Forms System
 
-**Status: Active Development** — Core modules and authentication are fully functional; advanced search filters and multi-stage workflow expansions are currently in progress (see [Roadmap](#-roadmap)).
+> **Ready for Deployment:** This guide documents the steps for HST's IT team to deploy the system to their on-premise IIS server. The system has been fully tested and is production-ready.
+
+**Status: Ready for Production Deployment** — Core modules and authentication are fully functional and tested. The system is pending deployment to HST's on-premise IIS server. Advanced search filters and multi-stage workflow expansions are currently in progress (see [Roadmap](#-roadmap)).
 
 A full-stack internal enterprise web application engineered for **HS Technologies (Phils.), Inc. (HST)**, developed during a 600-hour industry internship within the MIS-IT Department. The system digitizes critical corporate procedures — **Fixed Asset Requests** and **Damaged Reports** — replacing manual, paper-based operations with a secure, role-based, database-driven solution designed for **683 internal employees**.
 
@@ -90,6 +92,20 @@ DigitalFormsSystem/
 - **Out-of-Band Document Generation:** The temporary credential export utility is intentionally decoupled from the web application layer. It can only be executed locally via an administrative script requiring direct environment access, entirely eliminating web-based bulk enumeration attacks.
 - **Environment Isolation:** Crucial infrastructure metrics, connection credentials, and master keys are stored outside the code repository using localized `appsettings.json` overlays.
 - **Administrative Transparency:** Full audit trail implementation tracking login failures, row edits, and systemic parameter shifts.
+
+---
+
+## Current Hosting Status
+
+> **📌 Deployment Status:** The Digital Forms System is **ready for production deployment** at HST. The Azure-hosted developer environment used during development has expired, but the system is fully functional and can be deployed locally.
+
+| Environment | URL | Status |
+| :--- | :--- | :--- |
+| **Production (HST IIS)** | *Pending deployment* | ⏳ **Ready – Awaiting HST IT Deployment** |
+| **Developer's Environment (Azure)** | `https://digitalforms-xyz.azurewebsites.net` | ❌ **Expired** – Used for development demos only |
+| **Local Development** | `http://localhost:XXXX` | ✅ For development and testing |
+
+> ⚠️ **Note:** The Azure developer environment has expired. However, the system is **production-ready** and can be deployed to HST's IIS server at any time.
 
 ---
 
