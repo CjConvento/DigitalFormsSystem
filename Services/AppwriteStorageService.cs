@@ -25,52 +25,22 @@ namespace DigitalFormsSystem.Web.Services
         {
             _logger = logger;
 
-                // ============================================================
-                // DIAGNOSTIC — log lahat ng env vars at config keys na related
-                // ============================================================
-                _logger.LogInformation("=== ENV VARS SCAN START ===");
-                foreach (System.Collections.DictionaryEntry entry in Environment.GetEnvironmentVariables())
-                {
-                    var key = entry.Key?.ToString() ?? "";
-                    if (key.Contains("Appwrite", StringComparison.OrdinalIgnoreCase)
-                        || key.Contains("StorageSettings", StringComparison.OrdinalIgnoreCase))
-                    {
-                        _logger.LogInformation("ENV VAR FOUND: {Key}", key);
-                    }
-                }
-                _logger.LogInformation("=== ENV VARS SCAN END ===");
+            _endpoint = config["StorageSettings:Appwrite:Endpoint"]
+            ?? throw new InvalidOperationException("StorageSettings:Appwrite:Endpoint is missing.");
 
-                _logger.LogInformation("=== CONFIG KEYS SCAN START ===");
-                foreach (var kvp in config.AsEnumerable())
-                {
-                    if (kvp.Key.Contains("Appwrite", StringComparison.OrdinalIgnoreCase)
-                        || kvp.Key.Contains("StorageSettings", StringComparison.OrdinalIgnoreCase))
-                    {
-                        var isSecret = kvp.Key.Contains("ApiKey", StringComparison.OrdinalIgnoreCase);
-                        _logger.LogInformation("CONFIG KEY: {Key} = {Value}",
-                            kvp.Key,
-                            isSecret ? "(hidden)" : kvp.Value);
-                    }
-                }
-                _logger.LogInformation("=== CONFIG KEYS SCAN END ===");
+            _projectId = config["StorageSettings:Appwrite:ProjectId"]
+                ?? throw new InvalidOperationException("StorageSettings:Appwrite:ProjectId is missing.");
 
-            _endpoint = config["StorageSettings:Appwrite:Endpoint"] ?? "";
-            _projectId = config["StorageSettings:Appwrite:ProjectId"] ?? "";
-            var apiKey = config["StorageSettings:Appwrite:ApiKey"] ?? "";
-            _bucketId = config["StorageSettings:Appwrite:BucketId"] ?? "damaged-reports";
+            var apiKey = config["StorageSettings:Appwrite:ApiKey"]
+                ?? throw new InvalidOperationException("StorageSettings:Appwrite:ApiKey is missing.");
 
-            // DIAGNOSTIC LOG — makikita mo sa Render logs kung alin yung empty
-            _logger.LogInformation(
-                "Appwrite init: Endpoint={Endpoint} | ProjectId={ProjectId} | BucketId={BucketId} | ApiKeyLength={ApiKeyLength}",
-                string.IsNullOrEmpty(_endpoint) ? "(EMPTY)" : _endpoint,
-                string.IsNullOrEmpty(_projectId) ? "(EMPTY)" : _projectId,
-                string.IsNullOrEmpty(_bucketId) ? "(EMPTY)" : _bucketId,
-                apiKey.Length);
+            _bucketId = config["StorageSettings:Appwrite:BucketId"]
+                ?? throw new InvalidOperationException("StorageSettings:Appwrite:BucketId is missing.");
 
             var client = new Client()
-                .SetEndpoint(string.IsNullOrEmpty(_endpoint) ? "https://cloud.appwrite.io/v1" : _endpoint)
-                .SetProject(string.IsNullOrEmpty(_projectId) ? "placeholder" : _projectId)
-                .SetKey(string.IsNullOrEmpty(apiKey) ? "placeholder" : apiKey);
+                .SetEndpoint(_endpoint)
+                .SetProject(_projectId)
+                .SetKey(apiKey);
 
             _storage = new Storage(client);
         }
