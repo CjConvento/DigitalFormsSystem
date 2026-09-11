@@ -1,0 +1,25 @@
+@model DigitalFormsSystem.Core.Models.ErrorViewModel
+@{
+    ViewData["Title"] = "Error";
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Error - DigitalFormsSystem</title>
+    <link rel="stylesheet" href="~/css/site.css" />
+</head>
+<body>
+    <div style="max-width:600px; margin:80px auto; padding:30px; border:1px solid #ccc; border-radius:8px; text-align:center;">
+        <h1 style="color:#c00;">Error</h1>
+        <p>An unexpected error occurred while processing your request.</p>
+        @if (Model.ShowRequestId)
+        {
+            <p><small>Request ID: <code>@Model.RequestId</code></small></p>
+        }
+        <p><a href="/" class="btn btn-primary">Back to Home</a></p>
+    </div>
+</body>
+</html>

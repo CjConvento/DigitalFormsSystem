@@ -25,22 +25,23 @@ namespace DigitalFormsSystem.Web.Services
         {
             _logger = logger;
 
-            _endpoint = config["StorageSettings:Appwrite:Endpoint"]
-                ?? throw new InvalidOperationException("StorageSettings:Appwrite:Endpoint is missing.");
+            _endpoint = config["StorageSettings:Appwrite:Endpoint"] ?? "";
+            _projectId = config["StorageSettings:Appwrite:ProjectId"] ?? "";
+            var apiKey = config["StorageSettings:Appwrite:ApiKey"] ?? "";
+            _bucketId = config["StorageSettings:Appwrite:BucketId"] ?? "damaged-reports";
 
-            _projectId = config["StorageSettings:Appwrite:ProjectId"]
-                ?? throw new InvalidOperationException("StorageSettings:Appwrite:ProjectId is missing.");
-
-            var apiKey = config["StorageSettings:Appwrite:ApiKey"]
-                ?? throw new InvalidOperationException("StorageSettings:Appwrite:ApiKey is missing.");
-
-            _bucketId = config["StorageSettings:Appwrite:BucketId"]
-                ?? throw new InvalidOperationException("StorageSettings:Appwrite:BucketId is missing.");
+            // DIAGNOSTIC LOG — makikita mo sa Render logs kung alin yung empty
+            _logger.LogInformation(
+                "Appwrite init: Endpoint={Endpoint} | ProjectId={ProjectId} | BucketId={BucketId} | ApiKeyLength={ApiKeyLength}",
+                string.IsNullOrEmpty(_endpoint) ? "(EMPTY)" : _endpoint,
+                string.IsNullOrEmpty(_projectId) ? "(EMPTY)" : _projectId,
+                string.IsNullOrEmpty(_bucketId) ? "(EMPTY)" : _bucketId,
+                apiKey.Length);
 
             var client = new Client()
-                .SetEndpoint(_endpoint)
-                .SetProject(_projectId)
-                .SetKey(apiKey);
+                .SetEndpoint(string.IsNullOrEmpty(_endpoint) ? "https://cloud.appwrite.io/v1" : _endpoint)
+                .SetProject(string.IsNullOrEmpty(_projectId) ? "placeholder" : _projectId)
+                .SetKey(string.IsNullOrEmpty(apiKey) ? "placeholder" : apiKey);
 
             _storage = new Storage(client);
         }
