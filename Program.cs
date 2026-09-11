@@ -22,6 +22,18 @@
                 {
                     var builder = WebApplication.CreateBuilder(args);
 
+                    // ✅ Kestrel — allow large request bodies (default 30 MB)
+                    builder.WebHost.ConfigureKestrel(options =>
+                    {
+                        options.Limits.MaxRequestBodySize = 100L * 1024 * 1024;  // 100 MB
+                    });
+
+                    // ✅ Form options — allow large multipart form uploads
+                    builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+                    {
+                        options.MultipartBodyLengthLimit = 100L * 1024 * 1024;  // 100 MB
+                    });
+
                     builder.Services.AddControllersWithViews();
 
                     builder.Services.AddDbContext<DigitalFormsSystemContext>(options =>
@@ -104,20 +116,6 @@
                     Console.Error.WriteLine($"Exception type: {ex.GetType().Name}");
                     throw;
                 }
-            }
-
-            // ✅ Helper method to check if running in design-time (migrations)
-            private static bool IsDesignTime()
-            {
-                // Check for design-time environment
-                var designTime = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true";
-                
-                // Or check command line args
-                var args = Environment.GetCommandLineArgs();
-                if (args.Any(a => a.Contains("ef") || a.Contains("migrations")))
-                    return true;
-
-                return false;
             }
         }
     }
