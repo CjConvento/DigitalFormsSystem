@@ -73,9 +73,9 @@ namespace DigitalFormsSystem.Web.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(
-                    "Appwrite upload failed for bucket {BucketId}.", _bucketId);
-                _logger.LogDebug(ex, "Appwrite upload exception details");
+                _logger.LogError(ex,
+                    "Appwrite upload FAILED. Bucket {BucketId}, FileName {FileName}",
+                    _bucketId, file.FileName);
                 throw;
             }
         }
@@ -95,10 +95,10 @@ namespace DigitalFormsSystem.Web.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(
-                    "Appwrite delete failed for bucket {BucketId}.", _bucketId);
-                _logger.LogDebug(ex, "Appwrite delete exception details");
-                // Swallow — deletion failures are non-critical for the caller
+                _logger.LogError(ex,
+                    "Appwrite delete FAILED. Bucket {BucketId}, FileId {FileId}",
+                    _bucketId, storageFileId);
+                // Still swallow — deletion failures are non-critical
             }
         }
 

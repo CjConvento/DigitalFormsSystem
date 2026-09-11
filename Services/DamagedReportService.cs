@@ -247,10 +247,9 @@ namespace DigitalFormsSystem.Web.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError("Image upload failed for report {ReportId}, section {Section}",
-                        reportId, section);
-                    _logger.LogDebug(ex, "Image upload exception details");
-                    // Continue with next image — hindi natin fail buong report creation
+                    _logger.LogError(ex,
+                    "Image upload FAILED for report {ReportId}, section {Section}",
+                    reportId, section);
                 }
             }
 

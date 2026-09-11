@@ -15,6 +15,7 @@ namespace DigitalFormsSystem.Controllers
         private readonly ICurrentUserService _currentUserService;
         private readonly IConfiguration _config;
         private readonly IWebHostEnvironment _env;
+        private readonly ILogger<DamagedReportController> _logger;
         private readonly IAuditService _auditService;
         private readonly DigitalFormsSystemContext _context;  // <-- dinagdag
 
@@ -24,14 +25,16 @@ namespace DigitalFormsSystem.Controllers
             IAuditService auditService,
             IConfiguration config,
             IWebHostEnvironment env,
-            DigitalFormsSystemContext context)  // <-- dinagdag sa constructor
+            DigitalFormsSystemContext context,
+            ILogger<DamagedReportController> logger)  // <-- dinagdag sa constructor
         {
             _service = service;
             _currentUserService = currentUserService;
             _config = config;
             _auditService = auditService;
             _env = env;
-            _context = context;  // <-- i-assign
+            _context = context;
+            _logger = logger;
         }
 
         // ============================================================
@@ -404,15 +407,17 @@ namespace DigitalFormsSystem.Controllers
                     TempData["SuccessMessage"] = "Report updated successfully.";
                     return RedirectToAction(nameof(Index));
                 }
-                catch (DbUpdateConcurrencyException)
+                catch (DbUpdateConcurrencyException ex)
                 {
-                    await transaction.RollbackAsync();
-                    if (!await _service.ReportExistsAsync(id)) return NotFound();
-                    throw;
+                        await transaction.RollbackAsync();
+                        if (!await _service.ReportExistsAsync(id)) return NotFound();
+                        _logger.LogError(ex, "Concurrency error updating report {ReportId}", id);
+                        throw;
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
                     await transaction.RollbackAsync();
+                    _logger.LogError(ex, "Error updating damaged report {ReportId}", id);
                     throw;
                 }
             }
@@ -461,8 +466,9 @@ namespace DigitalFormsSystem.Controllers
                 TempData["SuccessMessage"] = "Report deleted successfully.";
                 return RedirectToAction(nameof(Index));
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Error deleting damaged report {ReportId}", id);
                 TempData["ErrorMessage"] = "An error occurred while deleting the report.";
                 return RedirectToAction(nameof(Index));
             }
