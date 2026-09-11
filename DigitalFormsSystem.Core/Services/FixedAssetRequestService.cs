@@ -24,20 +24,20 @@ namespace DigitalFormsSystem.Core.Services
             _managerId = configuration.GetValue<int>("AppSettings:ManagerEmployeeId");
 
             // FOR LOGGING
-            Console.WriteLine($"🔍 ManagerId loaded: {_managerId}");
+            _logger.LogDebug($"🔍 ManagerId loaded: {_managerId}");
         }
 
         // ============ READ ============
         public async Task<List<FixedAssetRequest>> GetUserRequestsAsync(int employeeId)
         {
-            Console.WriteLine($"🔍 GetUserRequestsAsync called with employeeId: {employeeId}");
+            _logger.LogDebug($"🔍 GetUserRequestsAsync called with employeeId: {employeeId}");
             Console.WriteLine($"🔍 _managerId is: {_managerId}");
 
             if (employeeId == _managerId)
             {
                 Console.WriteLine("✅ Manager detected!");
                 var allRequests = await _context.FixedAssetRequests.ToListAsync();
-                Console.WriteLine($"📊 Total requests found: {allRequests.Count}");
+                _logger.LogDebug($"📊 Total requests found: {allRequests.Count}");
                 return allRequests;
             }
             else

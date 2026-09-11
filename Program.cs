@@ -22,13 +22,14 @@
                     var builder = WebApplication.CreateBuilder(args);
 
                     builder.Services.AddControllersWithViews();
+
                     builder.Services.AddDbContext<DigitalFormsSystemContext>(options =>
-                    options.UseSqlServer(
+                    options.UseNpgsql(
                         builder.Configuration.GetConnectionString("DefaultConnection"),
-                        sqlOptions => sqlOptions.EnableRetryOnFailure(
+                        npgsql => npgsql.EnableRetryOnFailure(
                             maxRetryCount: 5,
                             maxRetryDelay: TimeSpan.FromSeconds(10),
-                            errorNumbersToAdd: null)));
+                            errorCodesToAdd: null)));   // ← "errorCodesToAdd", hindi "errorNumbersToAdd"
 
                     builder.Services.AddDistributedMemoryCache();
                     builder.Services.AddSession(options =>
@@ -94,8 +95,8 @@
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine("===== FATAL EXCEPTION =====");
-                    Console.WriteLine(ex.ToString());
+                    Console.Error.WriteLine("FATAL: Application startup failed.");
+                    Console.Error.WriteLine($"Exception type: {ex.GetType().Name}");
                     throw;
                 }
             }

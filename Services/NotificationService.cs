@@ -13,9 +13,10 @@ namespace DigitalFormsSystem.Web.Services
 
         public async Task SendEmailAsync(string to, string subject, string body)
         {
-            // TODO: Integrate with actual email service (SendGrid, SMTP, etc.)
-            // For now, just log
-            _logger.LogInformation($"Email sent to {to}: {subject}");
+            // Log a stable identifier, not the actual recipient
+            // If you have recipient user ID, pass it in. Otherwise, log a hash or "unspecified".
+            _logger.LogInformation("Email notification dispatched.");
+            _logger.LogDebug("Email subject length: {SubjectLength}", subject?.Length ?? 0);
             await Task.CompletedTask;
         }
 
@@ -23,16 +24,16 @@ namespace DigitalFormsSystem.Web.Services
         {
             // TODO: Integrate with actual SMS service (Twilio, etc.)
             // For now, just log
-            _logger.LogInformation($"SMS sent to {phoneNumber}: {message}");
+            _logger.LogInformation("SMS notification dispatched.");
             await Task.CompletedTask;
         }
 
-        public async Task NotifyStatusChangeAsync(int requestId, string? oldStatus, string? newStatus, int changedByEmployeeId)
+        public Task NotifyStatusChangeAsync(int requestId, string? oldStatus, string? newStatus, int changedByEmployeeId)
         {
-            // TODO: Determine who to notify based on status change
-            // For now, just log
-            _logger.LogInformation($"Status changed: Request {requestId}: {oldStatus} → {newStatus} by Employee {changedByEmployeeId}");
-            await Task.CompletedTask;
+            _logger.LogInformation(
+                "Status changed for request {RequestId}: {OldStatus} → {NewStatus} by employee {EmployeeId}",
+                requestId, oldStatus, newStatus, changedByEmployeeId);
+            return Task.CompletedTask;
         }
     }
 }

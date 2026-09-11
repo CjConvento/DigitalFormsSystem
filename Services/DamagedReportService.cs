@@ -7,7 +7,6 @@ using Microsoft.Extensions.Hosting;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
-using Microsoft.Identity.Client.Extensions.Msal;
 
 namespace DigitalFormsSystem.Web.Services
 {
@@ -223,7 +222,7 @@ namespace DigitalFormsSystem.Web.Services
             var connString = _config["StorageSettings:ConnectionString"];
             var containerName = _config["StorageSettings:ContainerName"] ?? "damaged-reports";
 
-            _logger.LogInformation("Saving {Count} images for report {ReportId} using provider: {Provider}", 
+            _logger.LogDebug("Saving {Count} images for report {ReportId} using provider {Provider}",
             images.Count, reportId, storageProvider);
 
             var uploadsFolder = GetUploadsFolder(webRootPath, uploadsPath);
@@ -317,22 +316,17 @@ namespace DigitalFormsSystem.Web.Services
 
                     if (response.Value)
                     {
-                        _logger.LogInformation("Successfully deleted blob: {BlobName} for report {ReportId}", 
-                            uri.Segments.Last(), image.DamagedReportId);
+                        _logger.LogDebug("Deleted blob for report {ReportId}.", image.DamagedReportId);
                     }
                     else
                     {
-                        _logger.LogWarning("Blob not found: {BlobName} for report {ReportId}", 
-                            uri.Segments.Last(), image.DamagedReportId);
+                        _logger.LogWarning("Blob not found for report {ReportId}.", image.DamagedReportId);
                     }
                 }
                 catch (Exception ex)
                 { 
-                // Log the error with context
-                _logger.LogError(ex, "Failed to delete blob from Azure. BlobName: {BlobName}, ReportId: {ReportId}, FilePath: {FilePath}", 
-                    Path.GetFileName(image.FilePath), 
-                    image.DamagedReportId, 
-                    image.FilePath);
+                _logger.LogError("Failed to delete blob for report {ReportId}.", image.DamagedReportId);
+                _logger.LogDebug(ex, "Blob delete exception details");
                 
                 // Optional: Re-throw if you want the operation to fail
                 // throw;    
@@ -351,17 +345,17 @@ namespace DigitalFormsSystem.Web.Services
                     if (System.IO.File.Exists(fullPath))
                     {
                         System.IO.File.Delete(fullPath);
-                        _logger.LogInformation("Successfully deleted local file: {FilePath}", fullPath);
+                        _logger.LogDebug("Deleted local file for report {ReportId}.", image.DamagedReportId);
                     }
                     else
                     {
-                        _logger.LogWarning("Local file not found: {FilePath}", fullPath);
+                        _logger.LogWarning("Local file not found for report {ReportId}.", image.DamagedReportId);
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to delete local file. FilePath: {FilePath}, ReportId: {ReportId}", 
-                        image.FilePath, image.DamagedReportId);
+                    _logger.LogError("Failed to delete local file for report {ReportId}.", image.DamagedReportId);
+                    _logger.LogDebug(ex, "Local file delete exception details");
                 }
             }
         }

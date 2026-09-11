@@ -12,15 +12,18 @@ namespace DigitalFormsSystem.Services
         private readonly DigitalFormsSystemContext _context;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly ICurrentUserService _currentUserService;
+        private readonly ILogger<AuditService> _logger;
 
         public AuditService(
             DigitalFormsSystemContext context,
             IHttpContextAccessor httpContextAccessor,
-            ICurrentUserService currentUserService)
+            ICurrentUserService currentUserService,
+            ILogger<AuditService> logger)
         {
             _context = context;
             _httpContextAccessor = httpContextAccessor;
             _currentUserService = currentUserService;
+            _logger = logger;    
         }
 
         public async Task LogAsync(
@@ -50,8 +53,8 @@ namespace DigitalFormsSystem.Services
             }
             catch (Exception ex)
             {
-                // Log error but don't break the application
-                Console.WriteLine($"Audit log error: {ex.Message}");
+                _logger.LogError("Audit log write failed for action {Action} on {EntityType}.", action, entityType);
+                _logger.LogDebug(ex, "Audit log exception details");
             }
         }
     }
