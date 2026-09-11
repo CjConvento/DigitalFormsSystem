@@ -58,6 +58,7 @@
                     builder.Services.AddScoped<IDamagedReportService, DamagedReportService>();
                     builder.Services.AddScoped<INotificationService, NotificationService>();
                     builder.Services.AddScoped<IAuditService, AuditService>();  
+                    builder.Services.AddScoped<IStorageService, AppwriteStorageService>();
 
                     var app = builder.Build();
 

@@ -1,0 +1,111 @@
+using Appwrite;
+using Appwrite.Models;
+using Appwrite.Services;
+using DigitalFormsSystem.Core.Interfaces;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+
+namespace DigitalFormsSystem.Web.Services
+{
+    /// <summary>
+    /// Appwrite-backed storage service.
+    /// Requires config under StorageSettings:Appwrite:* (endpoint, projectId, apiKey, bucketId).
+    /// </summary>
+    public class AppwriteStorageService : IStorageService
+    {
+        private readonly Storage _storage;
+        private readonly ILogger<AppwriteStorageService> _logger;
+        private readonly string _endpoint;
+        private readonly string _projectId;
+        private readonly string _bucketId;
+
+        public AppwriteStorageService(
+            IConfiguration config,
+            ILogger<AppwriteStorageService> logger)
+        {
+            _logger = logger;
+
+            _endpoint = config["StorageSettings:Appwrite:Endpoint"]
+                ?? throw new InvalidOperationException("StorageSettings:Appwrite:Endpoint is missing.");
+
+            _projectId = config["StorageSettings:Appwrite:ProjectId"]
+                ?? throw new InvalidOperationException("StorageSettings:Appwrite:ProjectId is missing.");
+
+            var apiKey = config["StorageSettings:Appwrite:ApiKey"]
+                ?? throw new InvalidOperationException("StorageSettings:Appwrite:ApiKey is missing.");
+
+            _bucketId = config["StorageSettings:Appwrite:BucketId"]
+                ?? throw new InvalidOperationException("StorageSettings:Appwrite:BucketId is missing.");
+
+            var client = new Client()
+                .SetEndpoint(_endpoint)
+                .SetProject(_projectId)
+                .SetKey(apiKey);
+
+            _storage = new Storage(client);
+        }
+
+        public async Task<StoredFile> UploadAsync(IFormFile file, string folder, CancellationToken ct = default)
+        {
+            // Read the file into memory (max 5 MB per current UploadSettings)
+            using var ms = new MemoryStream();
+            await file.CopyToAsync(ms, ct);
+            ms.Position = 0;
+
+            var fileId = ID.Unique();
+            var inputFile = InputFile.FromStream(ms, file.FileName, file.ContentType);
+
+            try
+            {
+                var result = await _storage.CreateFile(
+                    bucketId: _bucketId,
+                    fileId: fileId,
+                    file: inputFile
+                );
+
+                var publicUrl = BuildPublicUrl(result.Id);
+
+                _logger.LogDebug(
+                    "Appwrite upload OK. Bucket {BucketId}, FileId {FileId}, Size {Size}",
+                    _bucketId, result.Id, file.Length);
+
+                return new StoredFile(result.Id, publicUrl);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    "Appwrite upload failed for bucket {BucketId}.", _bucketId);
+                _logger.LogDebug(ex, "Appwrite upload exception details");
+                throw;
+            }
+        }
+
+        public async Task DeleteAsync(string storageFileId, CancellationToken ct = default)
+        {
+            if (string.IsNullOrWhiteSpace(storageFileId))
+                return;
+
+            try
+            {
+                await _storage.DeleteFile(bucketId: _bucketId, fileId: storageFileId);
+
+                _logger.LogDebug(
+                    "Appwrite delete OK. Bucket {BucketId}, FileId {FileId}",
+                    _bucketId, storageFileId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    "Appwrite delete failed for bucket {BucketId}.", _bucketId);
+                _logger.LogDebug(ex, "Appwrite delete exception details");
+                // Swallow — deletion failures are non-critical for the caller
+            }
+        }
+
+        private string BuildPublicUrl(string fileId)
+        {
+            // https://sgp.cloud.appwrite.io/v1/storage/buckets/{bucketId}/files/{fileId}/view?project={projectId}
+            return $"{_endpoint.TrimEnd('/')}/storage/buckets/{_bucketId}/files/{fileId}/view?project={_projectId}";
+        }
+    }
+}

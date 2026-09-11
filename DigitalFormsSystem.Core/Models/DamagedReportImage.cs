@@ -23,6 +23,9 @@ namespace DigitalFormsSystem.Core.Models
         [StringLength(500)]
         public string FilePath { get; set; } = null!;
 
+        [StringLength(50)]
+        public string? StorageFileId { get; set; }
+
         [Required]
         [StringLength(100)]
         public string ContentType { get; set; } = null!;

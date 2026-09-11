@@ -16,18 +16,21 @@ namespace DigitalFormsSystem.Web.Services
         private readonly IWebHostEnvironment _env;
         private readonly ILogger<DamagedReportService> _logger;
         private readonly IConfiguration _config;
+        private readonly IStorageService _storageService;
         private readonly int _managerId;  
 
         public DamagedReportService(
             DigitalFormsSystemContext context, 
             IWebHostEnvironment env,
             IConfiguration config,
+            IStorageService storageService,
             ILogger<DamagedReportService> logger
             )
         {
             _context = context;
             _env = env;
             _config = config;
+            _storageService = storageService;
             _logger = logger;
             _managerId = config.GetValue<int>("AppSettings:ManagerEmployeeId");
         }
@@ -218,146 +221,53 @@ namespace DigitalFormsSystem.Web.Services
         {
             if (images == null || images.Count == 0) return;
 
-            var storageProvider = _config["StorageSettings:Provider"] ?? "LocalIIS";
-            var connString = _config["StorageSettings:ConnectionString"];
-            var containerName = _config["StorageSettings:ContainerName"] ?? "damaged-reports";
+            _logger.LogDebug("Saving {Count} images for report {ReportId} in section {Section}",
+                images.Count, reportId, section);
 
-            _logger.LogDebug("Saving {Count} images for report {ReportId} using provider {Provider}",
-            images.Count, reportId, storageProvider);
-
-            var uploadsFolder = GetUploadsFolder(webRootPath, uploadsPath);
-
-            if (storageProvider == "AzureBlob" && !string.IsNullOrEmpty(connString))
+            foreach (var file in images)
             {
-                // ☁️ AZURE BLOB LOGIC (BAGO)
-                var blobServiceClient = new BlobServiceClient(connString);
-                var containerClient = blobServiceClient.GetBlobContainerClient(containerName);
-                await containerClient.CreateIfNotExistsAsync(PublicAccessType.Blob);
+                if (file.Length == 0) continue;
+                if (!IsValidImage(file, out _, maxFileSizeMB)) continue;
 
-                foreach (var file in images)
+                try
                 {
-                    if (file.Length == 0) continue;
-                    if (!IsValidImage(file, out _, maxFileSizeMB)) continue;
+                    // Upload to storage provider (Appwrite)
+                    var stored = await _storageService.UploadAsync(file, section);
 
-                    var uniqueName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName);
-                    var blobClient = containerClient.GetBlobClient($"{section.ToLower()}/{uniqueName}");
-
-                    using (var stream = file.OpenReadStream())
-                    {
-                        await blobClient.UploadAsync(stream, new BlobUploadOptions
-                        {
-                            HttpHeaders = new BlobHttpHeaders { ContentType = file.ContentType }
-                        });
-                    }
-
-                    var imageRecord = new DamagedReportImage
+                    _context.DamagedReportImages.Add(new DamagedReportImage
                     {
                         DamagedReportId = reportId,
                         Section = section,
                         FileName = file.FileName,
-                        FilePath = blobClient.Uri.ToString(), // ✅ IBA: Buong URL sa Azure
+                        FilePath = stored.PublicUrl,
+                        StorageFileId = stored.FileId,
                         ContentType = file.ContentType,
                         UploadedAt = DateTime.Now
-                    };
-                    _context.DamagedReportImages.Add(imageRecord);
+                    });
                 }
-            }
-            else
-            {
-                // 💻 LOCAL IIS LOGIC (KAPAREHO NG LUMANG SaveImageAsync)
-                if (!Directory.Exists(uploadsFolder))
-                    Directory.CreateDirectory(uploadsFolder);
-
-                foreach (var file in images)
+                catch (Exception ex)
                 {
-                    if (file.Length == 0) continue;
-                    if (!IsValidImage(file, out _, maxFileSizeMB)) continue;
-
-                    var uniqueName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName);
-                    var filePath = Path.Combine(uploadsFolder, uniqueName);
-
-                    using (var stream = new FileStream(filePath, FileMode.Create))
-                    {
-                        await file.CopyToAsync(stream);
-                    }
-
-                    var imageRecord = new DamagedReportImage
-                    {
-                        DamagedReportId = reportId,
-                        Section = section,
-                        FileName = file.FileName,
-                        FilePath = $"/{uploadsPath}/{uniqueName}", // ✅ KAPAREHO NG LUMANG FORMAT
-                        ContentType = file.ContentType,
-                        UploadedAt = DateTime.Now
-                    };
-                    _context.DamagedReportImages.Add(imageRecord);
+                    _logger.LogError("Image upload failed for report {ReportId}, section {Section}",
+                        reportId, section);
+                    _logger.LogDebug(ex, "Image upload exception details");
+                    // Continue with next image — hindi natin fail buong report creation
                 }
             }
 
             await _context.SaveChangesAsync();
         }
 
-        // ✅ BAGONG HELPER
         private async Task DeleteImageAsync(DamagedReportImage image, string webRootPath, string uploadsPath)
         {
-            var storageProvider = _config["StorageSettings:Provider"] ?? "LocalIIS";
-            var connString = _config["StorageSettings:ConnectionString"];
-            var containerName = _config["StorageSettings:ContainerName"] ?? "damaged-reports";
-
-            if (storageProvider == "AzureBlob" && !string.IsNullOrEmpty(connString))
+            if (string.IsNullOrEmpty(image.StorageFileId))
             {
-                // ☁️ BURAHIN MULA SA AZURE
-                try
-                {
-                    var uri = new Uri(image.FilePath);
-                    var blobClient = new BlobClient(connString, containerName, uri.Segments.Last());
-                    
-                    var response = await blobClient.DeleteIfExistsAsync();
-
-                    if (response.Value)
-                    {
-                        _logger.LogDebug("Deleted blob for report {ReportId}.", image.DamagedReportId);
-                    }
-                    else
-                    {
-                        _logger.LogWarning("Blob not found for report {ReportId}.", image.DamagedReportId);
-                    }
-                }
-                catch (Exception ex)
-                { 
-                _logger.LogError("Failed to delete blob for report {ReportId}.", image.DamagedReportId);
-                _logger.LogDebug(ex, "Blob delete exception details");
-                
-                // Optional: Re-throw if you want the operation to fail
-                // throw;    
-                }
+                _logger.LogDebug(
+                    "Skipping storage delete for report {ReportId} — no StorageFileId (legacy image).",
+                    image.DamagedReportId);
+                return;
             }
-            else
-            {
-                try
-                {
-                    // 💻 BURAHIN MULA SA LOCAL FILESYSTEM
-                    var uploadsFolder = GetUploadsFolder(webRootPath, uploadsPath);
-                    var fileName = Path.GetFileName(image.FilePath);
-                    var fullPath = Path.Combine(uploadsFolder, fileName);
 
-
-                    if (System.IO.File.Exists(fullPath))
-                    {
-                        System.IO.File.Delete(fullPath);
-                        _logger.LogDebug("Deleted local file for report {ReportId}.", image.DamagedReportId);
-                    }
-                    else
-                    {
-                        _logger.LogWarning("Local file not found for report {ReportId}.", image.DamagedReportId);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError("Failed to delete local file for report {ReportId}.", image.DamagedReportId);
-                    _logger.LogDebug(ex, "Local file delete exception details");
-                }
-            }
+            await _storageService.DeleteAsync(image.StorageFileId);
         }
 
         public string GenerateControlNo(int retryCount = 0)
