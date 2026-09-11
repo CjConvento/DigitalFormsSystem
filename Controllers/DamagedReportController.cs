@@ -352,74 +352,79 @@ namespace DigitalFormsSystem.Controllers
             if (ModelState.IsValid)
             {
                 // ✅ START TRANSACTION
-                using var transaction = await _context.Database.BeginTransactionAsync();
+                var strategy = _context.Database.CreateExecutionStrategy();
 
-                try
+                return await strategy.ExecuteAsync<ActionResult>(async () =>
                 {
-                    // ============================================================
-                    // 1. SAVE FOLLOW-UPS (PART IV)
-                    // ============================================================
-                    if (FollowUps != null)
-                    {
-                        // Remove existing follow-ups
-                        var existingFollowUps = await _context.DamagedReportFollowUps
-                            .Where(f => f.DamagedReportId == id)
-                            .ToListAsync();
-                        _context.DamagedReportFollowUps.RemoveRange(existingFollowUps);
+                    using var transaction = await _context.Database.BeginTransactionAsync();
 
-                        // Add new follow-ups
-                        foreach (var followUp in FollowUps)
+                    try
+                    {
+                        // ============================================================
+                        // 1. SAVE FOLLOW-UPS (PART IV)
+                        // ============================================================
+                        if (FollowUps != null)
                         {
-                            if (followUp.FollowUpDate != default &&
-                                !string.IsNullOrEmpty(followUp.Status))
+                            // Remove existing follow-ups
+                            var existingFollowUps = await _context.DamagedReportFollowUps
+                                .Where(f => f.DamagedReportId == id)
+                                .ToListAsync();
+                            _context.DamagedReportFollowUps.RemoveRange(existingFollowUps);
+
+                            // Add new follow-ups
+                            foreach (var followUp in FollowUps)
                             {
-                                followUp.DamagedReportId = id;
-                                followUp.CreatedAt = DateTime.Now;
-                                _context.DamagedReportFollowUps.Add(followUp);
+                                if (followUp.FollowUpDate != default &&
+                                    !string.IsNullOrEmpty(followUp.Status))
+                                {
+                                    followUp.DamagedReportId = id;
+                                    followUp.CreatedAt = DateTime.Now;
+                                    _context.DamagedReportFollowUps.Add(followUp);
+                                }
                             }
+                            await _context.SaveChangesAsync();
                         }
-                        await _context.SaveChangesAsync();
-                    }
 
-                    // ============================================================
-                    // 2. UPDATE MAIN REPORT
-                    // ============================================================
-                    var uploadsPath = _config["UploadSettings:DamagedReportsPath"];
-                    var success = await _service.UpdateReportAsync(
-                        updatedReport,
-                        partIimages,
-                        partIIimages,
-                        deleteImageIds,
-                        _env.WebRootPath,
-                        uploadsPath,
-                        maxFileSizeMB);
+                        // ============================================================
+                        // 2. UPDATE MAIN REPORT
+                        // ============================================================
+                        var uploadsPath = _config["UploadSettings:DamagedReportsPath"];
+                        var success = await _service.UpdateReportAsync(
+                            updatedReport,
+                            partIimages,
+                            partIIimages,
+                            deleteImageIds,
+                            _env.WebRootPath,
+                            uploadsPath,
+                            maxFileSizeMB);
 
-                    if (!success)
-                    {
-                        await transaction.RollbackAsync();
-                        TempData["ErrorMessage"] = "Report not found or cannot be edited.";
+                        if (!success)
+                        {
+                            await transaction.RollbackAsync();
+                            TempData["ErrorMessage"] = "Report not found or cannot be edited.";
+                            return RedirectToAction(nameof(Index));
+                        }
+
+                        // ✅ COMMIT TRANSACTION (both succeeded)
+                        await transaction.CommitAsync();
+
+                        TempData["SuccessMessage"] = "Report updated successfully.";
                         return RedirectToAction(nameof(Index));
                     }
-
-                    // ✅ COMMIT TRANSACTION (both succeeded)
-                    await transaction.CommitAsync();
-
-                    TempData["SuccessMessage"] = "Report updated successfully.";
-                    return RedirectToAction(nameof(Index));
-                }
-                catch (DbUpdateConcurrencyException ex)
-                {
+                    catch (DbUpdateConcurrencyException ex)
+                    {
+                            await transaction.RollbackAsync();
+                            if (!await _service.ReportExistsAsync(id)) return NotFound();
+                            _logger.LogError(ex, "Concurrency error updating report {ReportId}", id);
+                            throw;
+                    }
+                    catch (Exception ex)
+                    {
                         await transaction.RollbackAsync();
-                        if (!await _service.ReportExistsAsync(id)) return NotFound();
-                        _logger.LogError(ex, "Concurrency error updating report {ReportId}", id);
+                        _logger.LogError(ex, "Error updating damaged report {ReportId}", id);
                         throw;
-                }
-                catch (Exception ex)
-                {
-                    await transaction.RollbackAsync();
-                    _logger.LogError(ex, "Error updating damaged report {ReportId}", id);
-                    throw;
-                }
+                    }
+                });
             }
 
             ViewBag.Employees = new SelectList(_context.Employees, "Id", "Name", updatedReport.ReceivedByEmployeeId);
