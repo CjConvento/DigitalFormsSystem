@@ -25,6 +25,35 @@ namespace DigitalFormsSystem.Web.Services
         {
             _logger = logger;
 
+                // ============================================================
+                // DIAGNOSTIC — log lahat ng env vars at config keys na related
+                // ============================================================
+                _logger.LogInformation("=== ENV VARS SCAN START ===");
+                foreach (System.Collections.DictionaryEntry entry in Environment.GetEnvironmentVariables())
+                {
+                    var key = entry.Key?.ToString() ?? "";
+                    if (key.Contains("Appwrite", StringComparison.OrdinalIgnoreCase)
+                        || key.Contains("StorageSettings", StringComparison.OrdinalIgnoreCase))
+                    {
+                        _logger.LogInformation("ENV VAR FOUND: {Key}", key);
+                    }
+                }
+                _logger.LogInformation("=== ENV VARS SCAN END ===");
+
+                _logger.LogInformation("=== CONFIG KEYS SCAN START ===");
+                foreach (var kvp in config.AsEnumerable())
+                {
+                    if (kvp.Key.Contains("Appwrite", StringComparison.OrdinalIgnoreCase)
+                        || kvp.Key.Contains("StorageSettings", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var isSecret = kvp.Key.Contains("ApiKey", StringComparison.OrdinalIgnoreCase);
+                        _logger.LogInformation("CONFIG KEY: {Key} = {Value}",
+                            kvp.Key,
+                            isSecret ? "(hidden)" : kvp.Value);
+                    }
+                }
+                _logger.LogInformation("=== CONFIG KEYS SCAN END ===");
+
             _endpoint = config["StorageSettings:Appwrite:Endpoint"] ?? "";
             _projectId = config["StorageSettings:Appwrite:ProjectId"] ?? "";
             var apiKey = config["StorageSettings:Appwrite:ApiKey"] ?? "";
