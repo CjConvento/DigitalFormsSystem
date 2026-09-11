@@ -13,7 +13,7 @@ builder.Services.AddServerSideBlazor();
 
 // Register DbContext
 builder.Services.AddDbContext<DigitalFormsSystemContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Register Services
 builder.Services.AddScoped<ICurrentUserService, SessionCurrentUserService>();

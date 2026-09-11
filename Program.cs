@@ -7,7 +7,8 @@
     using DigitalFormsSystem.Services;      // For SessionCurrentUserService
     using DigitalFormsSystem.Core.Services; // For FixedAssetRequestService
     using DigitalFormsSystem.Web.Services;  // For DamagedReportService, NotificationService
-    using Microsoft.AspNetCore.Authentication.Cookies; 
+    using Microsoft.AspNetCore.Authentication.Cookies;
+    using Microsoft.AspNetCore.HttpOverrides; 
 
     namespace DigitalFormsSystem.Web
     {
@@ -68,6 +69,12 @@
                         app.UseHsts();
                     }
 
+                    // ✅ Must be BEFORE UseHttpsRedirection (Render / reverse proxies)
+                    app.UseForwardedHeaders(new ForwardedHeadersOptions
+                    {
+                        ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+                    });
+
                     app.UseHttpsRedirection();
                     app.UseStaticFiles();
                     app.UseRouting();
@@ -81,15 +88,12 @@
                         name: "default",
                         pattern: "{controller=FixedAsset}/{action=Index}/{id?}");
 
-                    if (!IsDesignTime())
-                    {
                         // ⭐ SEED EMPLOYEE PASSWORDS
                         using (var scope = app.Services.CreateScope())
                         {
                             var context = scope.ServiceProvider.GetRequiredService<DigitalFormsSystemContext>();
                             await DbInitializer.SeedEmployeePasswords(context);
                         }   
-                    }
 
                     app.Run();
                 }

@@ -2,6 +2,7 @@ using DigitalFormsSystem.Core.Interfaces;
 using DigitalFormsSystem.Core.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration; 
+using Microsoft.Extensions.Logging;
 
 namespace DigitalFormsSystem.Core.Services
 {
@@ -10,40 +11,43 @@ namespace DigitalFormsSystem.Core.Services
         private readonly DigitalFormsSystemContext _context;
         private readonly INotificationService _notificationService;
         private readonly IAuditService _auditService;
+        private readonly ILogger<FixedAssetRequestService> _logger;
         private readonly int _managerId;
 
         public FixedAssetRequestService(
             DigitalFormsSystemContext context, 
             INotificationService notificationService,
             IAuditService auditService,
+            ILogger<FixedAssetRequestService> logger,  
             IConfiguration configuration)
         {
             _context = context;
             _notificationService = notificationService;
             _auditService = auditService;
+            _logger = logger;
             _managerId = configuration.GetValue<int>("AppSettings:ManagerEmployeeId");
 
             // FOR LOGGING
-            _logger.LogDebug($"🔍 ManagerId loaded: {_managerId}");
+            _logger.LogDebug("🔍 ManagerId loaded: {ManagerId}", _managerId);
         }
 
         // ============ READ ============
         public async Task<List<FixedAssetRequest>> GetUserRequestsAsync(int employeeId)
         {
             _logger.LogDebug($"🔍 GetUserRequestsAsync called with employeeId: {employeeId}");
-            Console.WriteLine($"🔍 _managerId is: {_managerId}");
+            _logger.LogDebug("Manager ID is {ManagerId}", _managerId);
 
             if (employeeId == _managerId)
             {
-                Console.WriteLine("✅ Manager detected!");
+                _logger.LogDebug("Manager detected — returning all requests");
                 var allRequests = await _context.FixedAssetRequests.ToListAsync();
                 _logger.LogDebug($"📊 Total requests found: {allRequests.Count}");
                 return allRequests;
             }
             else
             {
-                Console.WriteLine("❌ Not manager. Returning only user's requests.");
-                return await _context.FixedAssetRequests
+                    _logger.LogDebug("Not manager — returning only user's requests");       
+                     return await _context.FixedAssetRequests
                     .Where(r => r.RequestedByEmployeeId == employeeId)
                     .Include(r => r.RequestedByEmployee)
                     .OrderByDescending(r => r.DateRequested)
@@ -204,13 +208,22 @@ namespace DigitalFormsSystem.Core.Services
         {
             try
             {
-                await _context.Database.ExecuteSqlRawAsync(
-                    "EXEC sp_PrintFixedAssetRequest @RequestID={0}, @PrintedByEmployeeID={1}",
-                    requestId, employeeId);
+                var log = new FixedAssetPrintLog
+                {
+                    FixedAssetRequestId = requestId,
+                    PrintedByEmployeeId = employeeId,
+                    PrintDateTime = DateTime.Now,
+                    PrintFormat = "Full Form"
+                };
+                _context.FixedAssetPrintLogs.Add(log);
+                await _context.SaveChangesAsync();
+
+                _logger.LogDebug("Print activity logged for request {RequestId}", requestId);
             }
-            catch
+            catch (Exception ex)
             {
-                // Ignore logging errors – print activity is non-critical
+                _logger.LogWarning("Failed to log print activity for request {RequestId}", requestId);
+                _logger.LogDebug(ex, "Print log exception details");
             }
         }
 
