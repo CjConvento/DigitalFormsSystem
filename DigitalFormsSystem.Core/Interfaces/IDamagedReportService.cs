@@ -8,9 +8,10 @@ namespace DigitalFormsSystem.Core.Interfaces
     {
         // ============ READ ============
         Task<List<DamagedReport>> GetUserReportsAsync(int employeeId);
-        Task<DamagedReport?> GetReportWithDetailsAsync(int id);
+        Task<DamagedReport?> GetReportWithDetailsAsync(int id, int employeeId);
         Task<bool> ReportExistsAsync(int id);
         Task<DamagedReport?> GetReportForPrintAsync(int id);
+        Task<List<Employee>> GetEmployeesForDropdownAsync();
 
         // ============ WRITE (Now using DTOs, no path leakage) ============
         Task<DamagedReport> CreateReportAsync(CreateDamagedReportRequest request, int currentEmployeeId);
@@ -19,7 +20,5 @@ namespace DigitalFormsSystem.Core.Interfaces
 
         // ============ HELPERS ============
         string GenerateControlNo(int retryCount = 0);
-
-        Task<List<Employee>> GetEmployeesForDropdownAsync();
     }
 }

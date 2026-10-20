@@ -14,7 +14,6 @@ namespace DigitalFormsSystem.Controllers
     {
         private readonly IDamagedReportService _service;
         private readonly ICurrentUserService _currentUserService;
-        private readonly IWebHostEnvironment _env;
         private readonly ILogger<DamagedReportController> _logger;
         private readonly IAuditService _auditService;
 
@@ -28,7 +27,6 @@ namespace DigitalFormsSystem.Controllers
             _service = service;
             _currentUserService = currentUserService;
             _auditService = auditService;
-            _env = env;
             _logger = logger;
         }
 
@@ -52,8 +50,10 @@ namespace DigitalFormsSystem.Controllers
             if (!_currentUserService.IsAuthenticated)
                 return RedirectToAction("Login", "Account");
 
-            var report = await _service.GetReportWithDetailsAsync(id);
+            // Pass EmployeeId to Service. Service enforces RBAC.
+            var report = await _service.GetReportWithDetailsAsync(id, _currentUserService.EmployeeId!.Value);
             if (report == null) return NotFound();
+
             return View(report);
         }
 
@@ -130,8 +130,8 @@ namespace DigitalFormsSystem.Controllers
             if (!_currentUserService.IsAuthenticated)
                 return RedirectToAction("Login", "Account");
 
-            // Check if the report exists and is in Draft status
-            var report = await _service.GetReportWithDetailsAsync(id);
+            // Service checks ownership and returns null if not authorized
+            var report = await _service.GetReportWithDetailsAsync(id, _currentUserService.EmployeeId!.Value);
             if (report == null) return NotFound();
             
             if (report.RequestStatus != "Draft")
@@ -140,7 +140,7 @@ namespace DigitalFormsSystem.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            // ✅ FIX: Delegated to Service
+            // Delegated to Service
             var employees = await _service.GetEmployeesForDropdownAsync();
             ViewBag.Employees = new SelectList(employees, "Id", "Name");
 
@@ -199,7 +199,7 @@ namespace DigitalFormsSystem.Controllers
             if (!_currentUserService.IsAuthenticated)
                 return RedirectToAction("Login", "Account");
 
-            var report = await _service.GetReportWithDetailsAsync(id);
+            var report = await _service.GetReportWithDetailsAsync(id, _currentUserService.EmployeeId!.Value);
             if (report == null) return NotFound();
 
             if (report.RequestStatus != "Draft")

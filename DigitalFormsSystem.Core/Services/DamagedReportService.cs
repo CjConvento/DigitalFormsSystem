@@ -39,19 +39,30 @@ namespace DigitalFormsSystem.Core.Services
         {
             var query = _context.DamagedReports.AsQueryable();
 
-            // CHECK IF (ADMIN)
-            if (employeeId == _managerId)
+            // CHECK USER ROLE: If not admin, filter to only their own reports
+            if (employeeId != _managerId)
             {
-                query = query.Where(r => r.ReportedByEmployeeId == employeeId);
+                query = query.Where(r => r.ReportedByEmployeeId == employeeId); // Filter to own reports
             }
+
+            // If they ARE the manager, the query remains unfiltered (sees ALL)
             return await query
                 .Include(r => r.ReportedByEmployee)
                 .OrderByDescending(r => r.CreatedAt)
                 .ToListAsync();
         }
 
-        public async Task<DamagedReport?> GetReportWithDetailsAsync(int id)
+        // Enforce ownership at the Service level
+        public async Task<DamagedReport?> GetReportWithDetailsAsync(int id, int employeeId)
         {
+            var query = _context.DamagedReports.AsQueryable();
+
+            // SECURITY CHECK: If NOT admin, they can only fetch their own report
+            if (employeeId != _managerId)
+            {
+                query = query.Where(r => r.ReportedByEmployeeId == employeeId);
+            }
+
             return await _context.DamagedReports
                 .Include(r => r.ReportedByEmployee)
                 .Include(r => r.ReceivedByEmployee)
