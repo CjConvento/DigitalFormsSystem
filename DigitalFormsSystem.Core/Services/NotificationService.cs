@@ -1,6 +1,7 @@
 using DigitalFormsSystem.Core.Interfaces;
+using Microsoft.Extensions.Logging;
 
-namespace DigitalFormsSystem.Web.Services
+namespace DigitalFormsSystem.Core.Services
 {
     public class NotificationService : INotificationService
     {

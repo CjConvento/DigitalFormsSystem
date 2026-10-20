@@ -1,5 +1,7 @@
-﻿using DigitalFormsSystem.Core.Interfaces;
+﻿using DigitalFormsSystem.Core.Dtos;
+using DigitalFormsSystem.Core.Interfaces;
 using DigitalFormsSystem.Core.Models;
+using DigitalFormsSystem.Core.Mappers;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -57,29 +59,14 @@ namespace DigitalFormsSystem.Controllers
         // ============ CREATE (POST) ============
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(FixedAssetRequest request)
+        public async Task<IActionResult> Create(FixedAssetRequest formModel)
         {
-            if (!_currentUserService.IsAuthenticated)
-                return RedirectToAction("Login", "Account");
+            if (!_currentUserService.IsAuthenticated) return RedirectToAction("Login", "Account");
 
             var empId = _currentUserService.EmployeeId!.Value;
-            request.RequestedByEmployeeId = empId;
-            request.RequestedByName = _currentUserService.EmployeeName;
 
-            // Parse TargetDateNeeded
-            var targetDateStr = Request.Form["TargetDateNeeded"].ToString();
-            if (!DateOnly.TryParseExact(targetDateStr, "yyyy-MM-dd", out var targetDate))
-            {
-                ModelState.AddModelError("TargetDateNeeded", "Invalid date format. Please use YYYY-MM-DD.");
-                return View(request);
-            }
-            request.TargetDateNeeded = targetDate;
-
-            ModelState.Remove("RequestedByEmployee");
-            ModelState.Remove("EvaluatedByEmployee");
-
-            // Parse ExistingUnits
-            List<ExistingUnitDetail> existingUnits = new();
+            // 1. Parse Existing Units from Form into DTOs
+            List<ExistingUnitDetailDto> existingUnitsDtos = new();
             int idx = 0;
             while (Request.Form.ContainsKey($"ExistingUnits[{idx}].Description"))
             {
@@ -88,54 +75,67 @@ namespace DigitalFormsSystem.Controllers
                 {
                     var itemNoStr = Request.Form[$"ExistingUnits[{idx}].ItemNo"].ToString();
                     int itemNo = string.IsNullOrEmpty(itemNoStr) ? idx + 1 : int.Parse(itemNoStr);
-                    var location = Request.Form[$"ExistingUnits[{idx}].Location"].ToString();
-                    var userName = Request.Form[$"ExistingUnits[{idx}].UserName"].ToString();
-                    var remarks = Request.Form[$"ExistingUnits[{idx}].Remarks"].ToString();
-
-                    existingUnits.Add(new ExistingUnitDetail
+                    
+                    existingUnitsDtos.Add(new ExistingUnitDetailDto
                     {
                         ItemNo = itemNo,
                         Description = description,
-                        Location = location ?? string.Empty,
-                        UserName = userName ?? string.Empty,
-                        Remarks = remarks ?? string.Empty
+                        Location = Request.Form[$"ExistingUnits[{idx}].Location"].ToString(),
+                        UserName = Request.Form[$"ExistingUnits[{idx}].UserName"].ToString(),
+                        Remarks = Request.Form[$"ExistingUnits[{idx}].Remarks"].ToString()
                     });
                 }
                 idx++;
             }
 
+            // 2. Map Form Model to DTO (Delegated to Mapper)
+            var requestDto = formModel.ToCreateDto(existingUnitsDtos);
+
+            // Handle Date Parsing quirks
+            var targetDateStr = Request.Form["TargetDateNeeded"].ToString();
+
+            if (DateOnly.TryParseExact(targetDateStr, "yyyy-MM-dd", out var targetDate))
+            {
+                requestDto.TargetDateNeeded = targetDate;
+            }
+            else
+            {
+                ModelState.AddModelError("TargetDateNeeded", "Invalid date format. Please use YYYY-MM-DD.");
+            }
+
             // Custom validations
-            if (request.Quantity < 1)
+            if (requestDto.Quantity < 1)
                 ModelState.AddModelError("Quantity", "Quantity must be at least 1.");
 
-            if (request.RequestType == "Additional" && !existingUnits.Any(u => !string.IsNullOrWhiteSpace(u.Description)))
+            if (requestDto.RequestType == "Additional" && !existingUnitsDtos.Any(u => !string.IsNullOrWhiteSpace(u.Description)))
                 ModelState.AddModelError("ExistingUnits", "At least one existing unit with a Description is required when Request Type is 'Additional'.");
 
             if (!ModelState.IsValid)
             {
-                if (request.RequestType == "Additional" && existingUnits.Any())
-                    ViewBag.ExistingUnits = existingUnits;
-                return View(request);
+                if (requestDto.RequestType == "Additional" && existingUnitsDtos.Any())
+                    ViewBag.ExistingUnits = existingUnitsDtos;
+                return View(formModel);
             }
 
             try
             {
-                var created = await _service.CreateRequestAsync(request, existingUnits);
-                
-                // ✅ LOG CREATE
-                await _auditService.LogAsync(
-                    "Create",
-                    "FixedAssetRequest",
-                    created.Id,
-                    $"Created request {created.ControlNo}");
+                // 3. Delegate to Service (Pass DTO and Employee ID)
+                var created = await _service.CreateRequestAsync(requestDto, empId);
 
-                TempData["SuccessMessage"] = "Request created successfully.";
+                await _auditService.LogAsync("Create", "FixedAssetRequest", created.Id, $"Created request {created.ControlNo}");
+                
+                TempData["SuccessMessage"] = "Request updated successfully.";
                 return RedirectToAction(nameof(Index));
             }
-            catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("UQ_FixedAssetRequests_ControlNo") == true)
+            catch (InvalidOperationException ex)
             {
-                ModelState.AddModelError("", "Unable to generate unique control number. Please try again.");
-                return View(request);
+                ModelState.AddModelError("", ex.Message);
+                return View(formModel);
+            }
+            catch (Exception)
+            {
+                ModelState.AddModelError("", "An unexpected error occurred. Please try again.");
+                return View(formModel);
             }
         }
 
@@ -160,22 +160,18 @@ namespace DigitalFormsSystem.Controllers
         // ============ EDIT (POST) ============
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, FixedAssetRequest updatedRequest)
+        public async Task<IActionResult> Edit(int id, FixedAssetRequest formModel)
         {
             if (!_currentUserService.IsAuthenticated)
                 return RedirectToAction("Login", "Account");
 
-            if (id != updatedRequest.Id) return NotFound();
+            if (id != formModel.Id) return NotFound();
 
-            ModelState.Remove("RequestedByEmployee");
-            ModelState.Remove("EvaluatedByEmployee");
-
-            // Custom validations
-            if (updatedRequest.Quantity < 1)
-                ModelState.AddModelError("Quantity", "Quantity must be at least 1.");
-
-            List<ExistingUnitDetail> parsedUnits = new();
-            if (updatedRequest.RequestType == "Additional")
+            var empId = _currentUserService.EmployeeId!.Value;
+            
+            // 1. Parse Existing Units from Form into DTOs
+            List<ExistingUnitDetailDto> existingUnitsDtos = new();
+            if (formModel.RequestType == "Additional")
             {
                 int idx = 0;
                 while (Request.Form.ContainsKey($"ExistingUnits[{idx}].Description"))
@@ -189,7 +185,7 @@ namespace DigitalFormsSystem.Controllers
                         var userName = Request.Form[$"ExistingUnits[{idx}].UserName"].ToString();
                         var remarks = Request.Form[$"ExistingUnits[{idx}].Remarks"].ToString();
 
-                        parsedUnits.Add(new ExistingUnitDetail
+                        existingUnitsDtos.Add(new ExistingUnitDetailDto
                         {
                             ItemNo = itemNo,
                             Description = description,
@@ -201,32 +197,39 @@ namespace DigitalFormsSystem.Controllers
                     idx++;
                 }
 
-                if (!parsedUnits.Any())
+                if (!existingUnitsDtos.Any())
                     ModelState.AddModelError("ExistingUnits", "At least one existing unit with a Description is required when Request Type is 'Additional'.");
             }
 
+            // 2. Map Form Model to DTO (Delegated to Mapper)
+            var requestDto = formModel.ToUpdateDto(existingUnitsDtos);
+
+            // Custom validations
+            if (requestDto.Quantity < 1)
+                ModelState.AddModelError("Quantity", "Quantity must be at least 1.");
+
             if (!ModelState.IsValid)
-                return View(updatedRequest);
+                return View(formModel);
 
             try
             {
-                var success = await _service.UpdateRequestAsync(updatedRequest, parsedUnits);
+                // 3. Delegate to Service (Pass DTO and Employee ID)
+                var success = await _service.UpdateRequestAsync(requestDto, empId);
                 if (!success) return NotFound();
 
-                // ✅ LOG EDIT
-                await _auditService.LogAsync(
-                    "Edit",
-                    "FixedAssetRequest",
-                    id,
-                    $"Updated request {updatedRequest.ControlNo}");
-
+                await _auditService.LogAsync("Edit", "FixedAssetRequest", id, $"Updated request {formModel.ControlNo}");
                 TempData["SuccessMessage"] = "Request updated successfully.";
                 return RedirectToAction(nameof(Index));
             }
-            catch (DbUpdateConcurrencyException)
+            catch (InvalidOperationException ex)
             {
-                if (!await _service.RequestExistsAsync(id)) return NotFound();
-                throw;
+                ModelState.AddModelError("", ex.Message);
+                return View(formModel);
+            }
+            catch (Exception)
+            {
+                ModelState.AddModelError("", "An unexpected error occurred while updating.");
+                return View(formModel);
             }
         }
 

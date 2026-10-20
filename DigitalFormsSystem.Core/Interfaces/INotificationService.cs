@@ -1,13 +1,13 @@
-namespace DigitalFormsSystem.Core.Interfaces
-{
-    public interface INotificationService
+    namespace DigitalFormsSystem.Core.Interfaces
     {
-        Task SendEmailAsync(string to, string subject, string body);
-        Task SendSmsAsync(string phoneNumber, string message);
-        Task NotifyStatusChangeAsync(
-            int requestId, 
-            string? oldStatus,   
-            string? newStatus,   
-            int changedByEmployeeId);
+        public interface INotificationService
+        {
+            Task SendEmailAsync(string to, string subject, string body);
+            Task SendSmsAsync(string phoneNumber, string message);
+            Task NotifyStatusChangeAsync(
+                int requestId, 
+                string? oldStatus,   
+                string? newStatus,   
+                int changedByEmployeeId);
+        }
     }
-}

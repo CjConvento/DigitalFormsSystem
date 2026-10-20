@@ -4,13 +4,12 @@
     using System.Threading;
     using DigitalFormsSystem.Data;  
     using QuestPDF.Infrastructure;
-    using DigitalFormsSystem.Services;      // For SessionCurrentUserService
-    using DigitalFormsSystem.Core.Services; // For FixedAssetRequestService
-    using DigitalFormsSystem.Web.Services;  // For DamagedReportService, NotificationService
+    using DigitalFormsSystem.Core.Services; // For AppwriteStorageService, NotificationService, SessionCurrentUserService, AuditService, FixedAssetRequestService, DamagedReportService      
     using Microsoft.AspNetCore.Authentication.Cookies;
     using Microsoft.AspNetCore.HttpOverrides; 
+    using DigitalFormsSystem.Middleware; // For GlobalExceptionMiddleware
 
-    namespace DigitalFormsSystem.Web
+    namespace DigitalFormsSystem
     {
         public class Program
         {
@@ -65,12 +64,15 @@
                     });
 
                     builder.Services.AddHttpContextAccessor();
-                    builder.Services.AddScoped<ICurrentUserService, SessionCurrentUserService>();
+                    builder.Services.AddScoped<ICurrentUserService, SessionCurrentUserService>(); 
+
                     builder.Services.AddScoped<IFixedAssetRequestService, FixedAssetRequestService>();
                     builder.Services.AddScoped<IDamagedReportService, DamagedReportService>();
+
                     builder.Services.AddScoped<INotificationService, NotificationService>();
                     builder.Services.AddScoped<IAuditService, AuditService>();  
                     builder.Services.AddScoped<IStorageService, AppwriteStorageService>();
+                    builder.Services.AddScoped<IAccountService, AccountService>();
 
                     var app = builder.Build();
 
@@ -78,7 +80,7 @@
 
                     if (!app.Environment.IsDevelopment())
                     {
-                        app.UseExceptionHandler("/Home/Error");
+                        // app.UseExceptionHandler("/Home/Error"); // middleware handles exceptions globally
                         app.UseHsts();
                     }
 
@@ -91,6 +93,9 @@
                     app.UseHttpsRedirection();
                     app.UseStaticFiles();
                     app.UseRouting();
+
+                    // Global Exception Handling Middleware
+                    app.UseMiddleware<GlobalExceptionMiddleware>(); 
 
                     // ✅ ORDER IS IMPORTANT: Authentication BEFORE Authorization
                     app.UseSession();

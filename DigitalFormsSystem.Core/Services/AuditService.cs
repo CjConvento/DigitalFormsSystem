@@ -2,10 +2,11 @@ using DigitalFormsSystem.Core.Interfaces;
 using DigitalFormsSystem.Core.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Threading.Tasks;
 
-namespace DigitalFormsSystem.Services
+namespace DigitalFormsSystem.Core.Services
 {
     public class AuditService : IAuditService
     {
@@ -57,5 +58,15 @@ namespace DigitalFormsSystem.Services
                 _logger.LogDebug(ex, "Audit log exception details");
             }
         }
+
+        public async Task<List<AuditLog>> GetRecentLogsAsync(int limit = 100)
+        {
+            return await _context.AuditLogs
+                .Include(l => l.User)
+                .OrderByDescending(l => l.CreatedAt)
+                .Take(limit)
+                .ToListAsync();
+        }
+
     }
 }

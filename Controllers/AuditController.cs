@@ -7,6 +7,7 @@ namespace DigitalFormsSystem.Web.Controllers
 {
     public class AuditController : Controller
     {
+        private readonly IAuditService _auditService;
         private readonly DigitalFormsSystemContext _context;
         private readonly ICurrentUserService _currentUserService;
         private readonly int _managerId;
@@ -14,14 +15,16 @@ namespace DigitalFormsSystem.Web.Controllers
         public AuditController(
             DigitalFormsSystemContext context,
             ICurrentUserService currentUserService,
+            IAuditService auditService,
             IConfiguration configuration)
         {
             _context = context;
+            _auditService = auditService;
             _currentUserService = currentUserService;
             _managerId = configuration.GetValue<int>("AppSettings:ManagerEmployeeId");
         }
 
-        // ✅ Only Gilbert can view audit logs
+        // ✅ Only Admin can view audit logs
         public async Task<IActionResult> Index()
         {
             if (!_currentUserService.IsAuthenticated)
@@ -35,11 +38,8 @@ namespace DigitalFormsSystem.Web.Controllers
                 return RedirectToAction("Index", "Home");
             }
 
-            var logs = await _context.AuditLogs
-                .Include(l => l.User)
-                .OrderByDescending(l => l.CreatedAt)
-                .Take(100)
-                .ToListAsync();
+            // ✅ DELEGATED TO SERVICE: Controller no longer touches DbContext
+            var logs = await _auditService.GetRecentLogsAsync(100);
 
             return View(logs);
         }

@@ -18,7 +18,7 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 SERVER = 'localhost\\SQLEXPRESS01'
 DATABASE = 'DigitalFormsSystem'
 OUTPUT_FILE = 'employee_credentials_from_db.pdf'
-MANAGER_ID = '778'  # Gilbert Pesidas ID
+MANAGER_ID = '778'  # Admin ID
 # =============================================================
 
 def get_employees():
@@ -282,7 +282,7 @@ def create_pdf(employees, output_file):
         ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.whitesmoke, colors.white]),
     ])
     
-    # Highlight Gilbert's row
+    # Highlight Admin's row
     for i, emp in enumerate(employees):
         if emp['ID'] == MANAGER_ID:
             row_index = i + 1
@@ -307,7 +307,7 @@ def create_pdf(employees, output_file):
     )
     
     legend_text = """
-    <font color="#CC0000">⭐</font> <b>Gilbert Pesidas (ID 778)</b> — <i>System Administrator / IT Manager</i>
+    <font color="#CC0000">⭐</font> <b>Admin (ID 778)</b> — <i>System Administrator / IT Manager</i>
     """
     elements.append(Paragraph(legend_text, legend_style))
     

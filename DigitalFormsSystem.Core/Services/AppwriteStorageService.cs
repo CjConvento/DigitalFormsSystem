@@ -2,10 +2,11 @@ using Appwrite;
 using Appwrite.Models;
 using Appwrite.Services;
 using DigitalFormsSystem.Core.Interfaces;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
-namespace DigitalFormsSystem.Web.Services
+namespace DigitalFormsSystem.Core.Services
 {
     /// <summary>
     /// Appwrite-backed storage service.

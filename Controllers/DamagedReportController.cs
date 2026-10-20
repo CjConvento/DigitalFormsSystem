@@ -1,10 +1,11 @@
 ﻿using DigitalFormsSystem.Core.Interfaces;
 using DigitalFormsSystem.Core.Models;
+using DigitalFormsSystem.Core.Mappers;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
-using Microsoft.AspNetCore.Http; 
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 
 namespace DigitalFormsSystem.Controllers
@@ -13,27 +14,21 @@ namespace DigitalFormsSystem.Controllers
     {
         private readonly IDamagedReportService _service;
         private readonly ICurrentUserService _currentUserService;
-        private readonly IConfiguration _config;
         private readonly IWebHostEnvironment _env;
         private readonly ILogger<DamagedReportController> _logger;
         private readonly IAuditService _auditService;
-        private readonly DigitalFormsSystemContext _context;  // <-- dinagdag
 
         public DamagedReportController(
             IDamagedReportService service,
             ICurrentUserService currentUserService,
             IAuditService auditService,
-            IConfiguration config,
             IWebHostEnvironment env,
-            DigitalFormsSystemContext context,
-            ILogger<DamagedReportController> logger)  // <-- dinagdag sa constructor
+            ILogger<DamagedReportController> logger)
         {
             _service = service;
             _currentUserService = currentUserService;
-            _config = config;
             _auditService = auditService;
             _env = env;
-            _context = context;
             _logger = logger;
         }
 
@@ -66,146 +61,63 @@ namespace DigitalFormsSystem.Controllers
         // ✏️ CREATE OPERATIONS
         // ============================================================
 
-        // ============ CREATE (GET) ============
-        public IActionResult Create()
+        // ============ CREATE (with form) ============
+        public async Task<IActionResult> Create()
         {
             if (!_currentUserService.IsAuthenticated)
                 return RedirectToAction("Login", "Account");
 
-            ViewBag.Employees = new SelectList(_context.Employees, "Id", "Name");
+            var employees = await _service.GetEmployeesForDropdownAsync();
+            ViewBag.Employees = new SelectList(employees, "Id", "Name");
+
             return View();
         }
 
         // ============ CREATE (POST) ============
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(DamagedReport report, List<IFormFile> partIimages, List<IFormFile> partIIimages)
+        public async Task<IActionResult> Create(DamagedReport formModel, List<IFormFile> partIimages, List<IFormFile> partIIimages)
         {
             if (!_currentUserService.IsAuthenticated)
                 return RedirectToAction("Login", "Account");
 
-            var empId = _currentUserService.EmployeeId!.Value;
-            report.ReportedByEmployeeId = empId;
+            ModelState.Remove("ControlNo"); // ControlNo is generated in the service, not user input
 
-            // Remove validation errors
-            ModelState.Remove("ControlNo");
-            ModelState.Remove("ReportedByEmployeeId");
-            ModelState.Remove("CreatedAt");
-            ModelState.Remove("UpdatedAt");
-            ModelState.Remove("RequestStatus");
-            ModelState.Remove("ReportedByEmployee");
-            ModelState.Remove("ReceivedByEmployee");
-            ModelState.Remove("InvestigatedByEmployee");
-            ModelState.Remove("VerifiedByEmployee");
-            ModelState.Remove("NotedByEmployee");
+            // 1. Delegrate to Mapper to convert form model to DTO
+            var request = formModel.ToCreateRequest(partIimages, partIIimages);
 
-            // Manual date parsing (copy from your existing code)
-            var datePurchasedStr = Request.Form["DatePurchased"].ToString();
-            if (!string.IsNullOrEmpty(datePurchasedStr))
+            // Handle Date Parsing (Moved from old controller logic)
+            if (DateOnly.TryParseExact(Request.Form["DatePurchased"], "yyyy-MM-dd", out var dp))
+                request.DatePurchased = dp;
+
+            if (DateTime.TryParse(Request.Form["IncidentDateTime"], CultureInfo.InvariantCulture, DateTimeStyles.None, out var idt))
+                request.IncidentDateTime = idt;
+
+            if (DateTime.TryParse(Request.Form["ReceivedDateTime"], CultureInfo.InvariantCulture, DateTimeStyles.None, out var rdt))
+                request.ReceivedDateTime = rdt;
+
+            // 2. Delegate to Service (Service handles IsValidImage, Transactions, and DB saving)
+            try
             {
-                if (!DateOnly.TryParseExact(datePurchasedStr, "yyyy-MM-dd", out var datePurchased))
-                    ModelState.AddModelError("DatePurchased", "Invalid date format.");
-                else
-                    report.DatePurchased = datePurchased;
+                var created = await _service.CreateReportAsync(request, _currentUserService.EmployeeId!.Value);
+                TempData["SuccessMessage"] = $"Damaged Report {created.ControlNo} created successfully.";
+                return RedirectToAction(nameof(Index));
+            }
+            catch (ArgumentException ex)
+            {
+                ModelState.AddModelError("", ex.Message); // Catches image validation errors from service
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error creating damaged report for employee {EmployeeId}", _currentUserService.EmployeeId);
+                ModelState.AddModelError("", "An unexpected error occurred. Please try again.");
             }
 
-            var incidentDateTimeStr = Request.Form["IncidentDateTime"].ToString();
-            if (!string.IsNullOrWhiteSpace(incidentDateTimeStr))
-            {
-                var formats = new[] { "yyyy-MM-ddTHH:mm", "yyyy-MM-ddTHH:mm:ss", "yyyy-MM-ddTHH:mm:ss.fff" };
-                if (DateTime.TryParseExact(incidentDateTimeStr, formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out var incidentDateTime))
-                    report.IncidentDateTime = incidentDateTime;
-                else if (DateTime.TryParse(incidentDateTimeStr, CultureInfo.InvariantCulture, DateTimeStyles.None, out incidentDateTime))
-                    report.IncidentDateTime = incidentDateTime;
-                else
-                    ModelState.AddModelError("IncidentDateTime", "Invalid incident date/time format.");
-            }
+            // Re-populate dropdown on error
+            var employees = await _service.GetEmployeesForDropdownAsync();
+            ViewBag.Employees = new SelectList(employees, "Id", "Name");
 
-            var receivedDateTimeStr = Request.Form["ReceivedDateTime"].ToString();
-            if (!string.IsNullOrWhiteSpace(receivedDateTimeStr))
-            {
-                var formats = new[] { "yyyy-MM-ddTHH:mm", "yyyy-MM-ddTHH:mm:ss", "yyyy-MM-ddTHH:mm:ss.fff" };
-                if (DateTime.TryParseExact(receivedDateTimeStr, formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out var receivedDateTime))
-                    report.ReceivedDateTime = receivedDateTime;
-                else if (DateTime.TryParse(receivedDateTimeStr, CultureInfo.InvariantCulture, DateTimeStyles.None, out receivedDateTime))
-                    report.ReceivedDateTime = receivedDateTime;
-                else
-                    ModelState.AddModelError("ReceivedDateTime", "Invalid received date/time format.");
-            }
-
-            // GAD-only: clear Part IV fields for non-GAD
-            var isGad = _currentUserService.EmployeeDepartment == "GAD";
-            if (!isGad)
-            {
-                report.Findings = null;
-                report.Recommendation = null;
-                report.NegligenceFlag = null;
-                report.NegligenceDetails = null;
-                report.Remarks = null;
-                report.AdministrativeDiscipline = null;
-                report.InvestigatedByEmployeeId = null;
-                report.VerifiedByEmployeeId = null;
-                report.NotedByEmployeeId = null;
-            }
-
-            // Validate images
-            var maxFileSizeMB = _config.GetValue<int>("UploadSettings:MaxFileSizeMB", 5);
-            bool hasImageError = false;
-
-            if (partIimages != null)
-            {
-                foreach (var img in partIimages)
-                {
-                    if (img.Length > 0 && !_service.IsValidImage(img, out string errorMsg, maxFileSizeMB))
-                    {
-                        ModelState.AddModelError("partIimages", errorMsg);
-                        hasImageError = true;
-                    }
-                }
-            }
-
-            if (partIIimages != null)
-            {
-                foreach (var img in partIIimages)
-                {
-                    if (img.Length > 0 && !_service.IsValidImage(img, out string errorMsg, maxFileSizeMB))
-                    {
-                        ModelState.AddModelError("partIIimages", errorMsg);
-                        hasImageError = true;
-                    }
-                }
-            }
-
-            if (hasImageError)
-            {
-                ViewBag.Employees = new SelectList(_context.Employees, "Id", "Name", report.ReceivedByEmployeeId);
-                return View(report);
-            }
-
-            if (ModelState.IsValid)
-            {
-                try
-                {
-                    var uploadsPath = _config["UploadSettings:DamagedReportsPath"] ?? "uploads/damagedreports";
-                    var created = await _service.CreateReportAsync(
-                        report,
-                        partIimages,
-                        partIIimages,
-                        _env.WebRootPath,
-                        uploadsPath,
-                        maxFileSizeMB);
-
-                    TempData["SuccessMessage"] = "Damaged Report created successfully.";
-                    return RedirectToAction(nameof(Index));
-                }
-                catch (Exception ex)
-                {
-                    ModelState.AddModelError("", $"Error creating report: {ex.Message}");
-                }
-            }
-
-            ViewBag.Employees = new SelectList(_context.Employees, "Id", "Name", report.ReceivedByEmployeeId);
-            return View(report);
+            return View(formModel);
         }
 
         // ============================================================
@@ -218,217 +130,63 @@ namespace DigitalFormsSystem.Controllers
             if (!_currentUserService.IsAuthenticated)
                 return RedirectToAction("Login", "Account");
 
-            // ✅ Include FollowUps
-            var report = await _context.DamagedReports
-                .Include(r => r.Images)
-                .Include(r => r.FollowUps)  // ✅ ADD THIS
-                .FirstOrDefaultAsync(r => r.Id == id);
-
+            // Check if the report exists and is in Draft status
+            var report = await _service.GetReportWithDetailsAsync(id);
             if (report == null) return NotFound();
-
+            
             if (report.RequestStatus != "Draft")
             {
                 TempData["ErrorMessage"] = "Only reports with 'Draft' status can be edited.";
                 return RedirectToAction(nameof(Index));
             }
 
-            ViewBag.Employees = new SelectList(_context.Employees, "Id", "Name", report.ReceivedByEmployeeId);
+            // ✅ FIX: Delegated to Service
+            var employees = await _service.GetEmployeesForDropdownAsync();
+            ViewBag.Employees = new SelectList(employees, "Id", "Name");
+
             return View(report);
         }
 
-        // ============ EDIT (POST) - Keep it simple for now ============
+        // ============ EDIT (POST) ============
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(
-            int id, 
-            DamagedReport updatedReport, 
-            List<IFormFile> partIimages, 
-            List<IFormFile> partIIimages, 
+            int id,
+            DamagedReport formModel,
+            List<IFormFile> partIimages,
+            List<IFormFile> partIIimages,
             List<int> deleteImageIds,
-            List<DamagedReportFollowUp> FollowUps
-)
+            List<DamagedReportFollowUp> formFollowUps)
         {
             if (!_currentUserService.IsAuthenticated)
                 return RedirectToAction("Login", "Account");
 
-            if (id != updatedReport.Id) return NotFound();
+            if (id != formModel.Id) return NotFound();
 
-            // Remove validation
-            ModelState.Remove("ControlNo");
-            ModelState.Remove("ReportedByEmployeeId");
-            ModelState.Remove("CreatedAt");
-            ModelState.Remove("UpdatedAt");
-            ModelState.Remove("RequestStatus");
-            ModelState.Remove("ReportedByEmployee");
-            ModelState.Remove("ReceivedByEmployee");
-            ModelState.Remove("InvestigatedByEmployee");
-            ModelState.Remove("VerifiedByEmployee");
-            ModelState.Remove("NotedByEmployee");
-
-            // GAD check
+            // 1. Delegate to Mapper to convert form model + files + metadata to Update DTO
             var isGad = _currentUserService.EmployeeDepartment == "GAD";
-            if (!isGad)
+            var request = formModel.ToUpdateRequest(partIimages, partIIimages, deleteImageIds, formFollowUps, isGad);
+
+            // 2. Delegate to Service (Service handles atomic transaction for Report + FollowUps + Images)
+            try
             {
-                updatedReport.Findings = null;
-                updatedReport.Recommendation = null;
-                updatedReport.NegligenceFlag = null;
-                updatedReport.NegligenceDetails = null;
-                updatedReport.Remarks = null;
-                updatedReport.AdministrativeDiscipline = null;
-                updatedReport.InvestigatedByEmployeeId = null;
-                updatedReport.VerifiedByEmployeeId = null;
-                updatedReport.NotedByEmployeeId = null;
+                var success = await _service.UpdateReportAsync(request, _currentUserService.EmployeeId!.Value);
+                if (!success) return NotFound();
+
+                TempData["SuccessMessage"] = "Report updated successfully.";
+                return RedirectToAction(nameof(Index));
+            }
+            catch (ArgumentException ex)
+            {
+                ModelState.AddModelError("", ex.Message);
+            }
+            catch (Exception)
+            {
+                ModelState.AddModelError("", "An unexpected error occurred while updating.");
             }
 
-            // Validate new images
-            var maxFileSizeMB = _config.GetValue<int>("UploadSettings:MaxFileSizeMB", 5);
-            bool hasImageError = false;
-
-            if (partIimages != null)
-            {
-                foreach (var img in partIimages)
-                {
-                    if (img.Length > 0 && !_service.IsValidImage(img, out string errorMsg, maxFileSizeMB))
-                    {
-                        ModelState.AddModelError("partIimages", errorMsg);
-                        hasImageError = true;
-                    }
-                }
-            }
-
-            if (partIIimages != null)
-            {
-                foreach (var img in partIIimages)
-                {
-                    if (img.Length > 0 && !_service.IsValidImage(img, out string errorMsg, maxFileSizeMB))
-                    {
-                        ModelState.AddModelError("partIIimages", errorMsg);
-                        hasImageError = true;
-                    }
-                }
-            }
-
-            if (hasImageError)
-            {
-                var originalReport = await _service.GetReportWithDetailsAsync(id);
-                if (originalReport != null)
-                {
-                    // Copy scalar fields
-                    originalReport.Item = updatedReport.Item;
-                    originalReport.FixedAssetCode = updatedReport.FixedAssetCode;
-                    originalReport.DatePurchased = updatedReport.DatePurchased;
-                    originalReport.BrandSize = updatedReport.BrandSize;
-                    originalReport.LocationUser = updatedReport.LocationUser;
-                    originalReport.SerialNumber = updatedReport.SerialNumber;
-                    originalReport.Color = updatedReport.Color;
-                    originalReport.IncidentDateTime = updatedReport.IncidentDateTime;
-                    originalReport.CauseOfDamage = updatedReport.CauseOfDamage;
-                    originalReport.ImmediateAction = updatedReport.ImmediateAction;
-                    originalReport.RecommendedAction = updatedReport.RecommendedAction;
-                    originalReport.ReceivedByEmployeeId = updatedReport.ReceivedByEmployeeId;
-                    originalReport.ReceivedDateTime = updatedReport.ReceivedDateTime;
-
-                    if (isGad)
-                    {
-                        originalReport.Findings = updatedReport.Findings;
-                        originalReport.Recommendation = updatedReport.Recommendation;
-                        originalReport.NegligenceFlag = updatedReport.NegligenceFlag;
-                        originalReport.NegligenceDetails = updatedReport.NegligenceDetails;
-                        originalReport.Remarks = updatedReport.Remarks;
-                        originalReport.AdministrativeDiscipline = updatedReport.AdministrativeDiscipline;
-                        originalReport.InvestigatedByEmployeeId = updatedReport.InvestigatedByEmployeeId;
-                        originalReport.VerifiedByEmployeeId = updatedReport.VerifiedByEmployeeId;
-                        originalReport.NotedByEmployeeId = updatedReport.NotedByEmployeeId;
-                    }
-
-                    ViewBag.Employees = new SelectList(_context.Employees, "Id", "Name", originalReport.ReceivedByEmployeeId);
-                    return View(originalReport);
-                }
-
-                ViewBag.Employees = new SelectList(_context.Employees, "Id", "Name", updatedReport.ReceivedByEmployeeId);
-                return View(updatedReport);
-            }
-
-            if (ModelState.IsValid)
-            {
-                // ✅ START TRANSACTION
-                var strategy = _context.Database.CreateExecutionStrategy();
-
-                return await strategy.ExecuteAsync<ActionResult>(async () =>
-                {
-                    using var transaction = await _context.Database.BeginTransactionAsync();
-
-                    try
-                    {
-                        // ============================================================
-                        // 1. SAVE FOLLOW-UPS (PART IV)
-                        // ============================================================
-                        if (FollowUps != null)
-                        {
-                            // Remove existing follow-ups
-                            var existingFollowUps = await _context.DamagedReportFollowUps
-                                .Where(f => f.DamagedReportId == id)
-                                .ToListAsync();
-                            _context.DamagedReportFollowUps.RemoveRange(existingFollowUps);
-
-                            // Add new follow-ups
-                            foreach (var followUp in FollowUps)
-                            {
-                                if (followUp.FollowUpDate != default &&
-                                    !string.IsNullOrEmpty(followUp.Status))
-                                {
-                                    followUp.DamagedReportId = id;
-                                    followUp.CreatedAt = DateTime.Now;
-                                    _context.DamagedReportFollowUps.Add(followUp);
-                                }
-                            }
-                            await _context.SaveChangesAsync();
-                        }
-
-                        // ============================================================
-                        // 2. UPDATE MAIN REPORT
-                        // ============================================================
-                        var uploadsPath = _config["UploadSettings:DamagedReportsPath"];
-                        var success = await _service.UpdateReportAsync(
-                            updatedReport,
-                            partIimages,
-                            partIIimages,
-                            deleteImageIds,
-                            _env.WebRootPath,
-                            uploadsPath,
-                            maxFileSizeMB);
-
-                        if (!success)
-                        {
-                            await transaction.RollbackAsync();
-                            TempData["ErrorMessage"] = "Report not found or cannot be edited.";
-                            return RedirectToAction(nameof(Index));
-                        }
-
-                        // ✅ COMMIT TRANSACTION (both succeeded)
-                        await transaction.CommitAsync();
-
-                        TempData["SuccessMessage"] = "Report updated successfully.";
-                        return RedirectToAction(nameof(Index));
-                    }
-                    catch (DbUpdateConcurrencyException ex)
-                    {
-                            await transaction.RollbackAsync();
-                            if (!await _service.ReportExistsAsync(id)) return NotFound();
-                            _logger.LogError(ex, "Concurrency error updating report {ReportId}", id);
-                            throw;
-                    }
-                    catch (Exception ex)
-                    {
-                        await transaction.RollbackAsync();
-                        _logger.LogError(ex, "Error updating damaged report {ReportId}", id);
-                        throw;
-                    }
-                });
-            }
-
-            ViewBag.Employees = new SelectList(_context.Employees, "Id", "Name", updatedReport.ReceivedByEmployeeId);
-            return View(updatedReport);
+            return View(formModel);
+        
         }
 
         // ============================================================
@@ -462,9 +220,9 @@ namespace DigitalFormsSystem.Controllers
                 return RedirectToAction("Login", "Account");
 
             try
-            {
-                var uploadsPath = _config["UploadSettings:DamagedReportsPath"];
-                var success = await _service.DeleteReportAsync(id, _env.WebRootPath, uploadsPath);
+            {   
+                // 1 argument as the service handles storage deletion internally.
+                var success = await _service.DeleteReportAsync(id);
 
                 if (!success) return NotFound();
 

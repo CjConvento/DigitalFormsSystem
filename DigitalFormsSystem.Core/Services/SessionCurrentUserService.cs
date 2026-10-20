@@ -1,7 +1,7 @@
 using DigitalFormsSystem.Core.Interfaces;
 using Microsoft.AspNetCore.Http;
 
-namespace DigitalFormsSystem.Services   // <-- ito ang tamang namespace
+namespace DigitalFormsSystem.Core.Services 
 {
     public class SessionCurrentUserService : ICurrentUserService
     {
