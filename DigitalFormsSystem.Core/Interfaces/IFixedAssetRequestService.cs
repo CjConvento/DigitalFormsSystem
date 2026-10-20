@@ -10,7 +10,7 @@ namespace DigitalFormsSystem.Core.Interfaces
         // =======================
 
         Task<List<FixedAssetRequest>> GetUserRequestsAsync(int employeeId);
-        Task<FixedAssetRequest?> GetRequestWithDetailsAsync(int id);
+        Task<FixedAssetRequest?> GetRequestWithDetailsAsync(int id, int employeeId);
         Task<bool> RequestExistsAsync(int id);
 
         // ========================
@@ -27,7 +27,7 @@ namespace DigitalFormsSystem.Core.Interfaces
         Task<bool> DeleteRequestAsync(int id);
 
         // Print
-        Task<FixedAssetRequest?> GetRequestForPrintAsync(int id);
+        Task<FixedAssetRequest?> GetRequestForPrintAsync(int id, int employeeId);
         Task LogPrintActivityAsync(int requestId, int employeeId);
 
         // Helpers

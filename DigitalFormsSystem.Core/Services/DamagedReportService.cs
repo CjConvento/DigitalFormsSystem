@@ -63,7 +63,7 @@ namespace DigitalFormsSystem.Core.Services
                 query = query.Where(r => r.ReportedByEmployeeId == employeeId);
             }
 
-            return await _context.DamagedReports
+            return await query
                 .Include(r => r.ReportedByEmployee)
                 .Include(r => r.ReceivedByEmployee)
                 .Include(r => r.Images)
@@ -184,9 +184,15 @@ namespace DigitalFormsSystem.Core.Services
         }
 
         // ============ PRINT ============
-        public async Task<DamagedReport?> GetReportForPrintAsync(int id)
+        public async Task<DamagedReport?> GetReportForPrintAsync(int id, int employeeId)
         {
-            var report = await _context.DamagedReports
+            var query = _context.DamagedReports.AsQueryable();
+            
+            // SECURITY CHECK: If NOT admin, they can only fetch their own report for printing
+            if (employeeId != _managerId) query = query
+                .Where(r => r.ReportedByEmployeeId == employeeId);
+
+            var report = await query
                 .Include(r => r.ReportedByEmployee)
                 .Include(r => r.ReceivedByEmployee)
                 .Include(r => r.Images)

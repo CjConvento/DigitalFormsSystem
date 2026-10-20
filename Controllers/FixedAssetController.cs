@@ -10,20 +10,20 @@ namespace DigitalFormsSystem.Controllers
     public class FixedAssetController : Controller
     {
         private readonly IFixedAssetRequestService _service;
+        private readonly INotificationService _notificationService;
         private readonly ICurrentUserService _currentUserService;
-        private readonly INotificationService _notificationService; 
         private readonly IAuditService _auditService;
 
         // 
         public FixedAssetController(
             IFixedAssetRequestService service,
-            ICurrentUserService currentUserService,
             INotificationService notificationService,
+            ICurrentUserService currentUserService,
             IAuditService auditService)  
         {
             _service = service;
-            _currentUserService = currentUserService;
             _notificationService = notificationService;
+            _currentUserService = currentUserService;
             _auditService = auditService;  
         }
 
@@ -43,7 +43,8 @@ namespace DigitalFormsSystem.Controllers
             if (!_currentUserService.IsAuthenticated)
                 return RedirectToAction("Login", "Account");
 
-            var request = await _service.GetRequestWithDetailsAsync(id);
+            // Pass EmployeeId to Service. Service enforces RBAC.
+            var request = await _service.GetRequestWithDetailsAsync(id, _currentUserService.EmployeeId!.Value);
             if (request == null) return NotFound();
             return View(request);
         }
@@ -124,7 +125,7 @@ namespace DigitalFormsSystem.Controllers
 
                 await _auditService.LogAsync("Create", "FixedAssetRequest", created.Id, $"Created request {created.ControlNo}");
                 
-                TempData["SuccessMessage"] = "Request updated successfully.";
+                TempData["SuccessMessage"] = "Request created successfully.";
                 return RedirectToAction(nameof(Index));
             }
             catch (InvalidOperationException ex)
@@ -145,7 +146,7 @@ namespace DigitalFormsSystem.Controllers
             if (!_currentUserService.IsAuthenticated)
                 return RedirectToAction("Login", "Account");
 
-            var request = await _service.GetRequestWithDetailsAsync(id);
+            var request = await _service.GetRequestWithDetailsAsync(id, _currentUserService.EmployeeId!.Value);
             if (request == null) return NotFound();
 
             if (request.RequestStatus != "Draft")
@@ -239,7 +240,7 @@ namespace DigitalFormsSystem.Controllers
             if (!_currentUserService.IsAuthenticated)
                 return RedirectToAction("Login", "Account");
 
-            var request = await _service.GetRequestWithDetailsAsync(id);
+            var request = await _service.GetRequestWithDetailsAsync(id, _currentUserService.EmployeeId!.Value);
             if (request == null) return NotFound();
 
             if (request.RequestStatus != "Draft")
@@ -297,17 +298,13 @@ namespace DigitalFormsSystem.Controllers
 
             var empId = _currentUserService.EmployeeId!.Value;
 
-            // Log print activity
-            await _service.LogPrintActivityAsync(id, empId);
-            // ✅ LOG PRINT
-            await _auditService.LogAsync(
-                "Print",
-                "FixedAssetRequest",
-                id,
-                $"Printed request ID: {id}");
-
-            var request = await _service.GetRequestForPrintAsync(id);
+            // 1. Check authorization FIRST (Service enforces RBAC)
+            var request = await _service.GetRequestForPrintAsync(id, empId);
             if (request == null) return NotFound();
+
+            // 2. Log activity ONLY if they are authorized to view it
+            await _service.LogPrintActivityAsync(id, empId);
+            await _auditService.LogAsync("Print", "FixedAssetRequest", id, $"Printed request ID: {id}");
 
             return View(request);
         }

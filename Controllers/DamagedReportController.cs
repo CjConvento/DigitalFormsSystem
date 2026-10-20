@@ -21,7 +21,6 @@ namespace DigitalFormsSystem.Controllers
             IDamagedReportService service,
             ICurrentUserService currentUserService,
             IAuditService auditService,
-            IWebHostEnvironment env,
             ILogger<DamagedReportController> logger)
         {
             _service = service;
