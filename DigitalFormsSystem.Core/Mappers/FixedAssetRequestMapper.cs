@@ -10,7 +10,7 @@ public static class FixedAssetRequestMapper
     {
         return new CreateFixedAssetRequestDto
         {
-            DateRequested = formModel.DateRequested,
+            DateRequested = formModel.DateRequested == default ? DateOnly.FromDateTime(DateTime.Now) : formModel.DateRequested,
             Department = formModel.Department,
             TargetDateNeeded = formModel.TargetDateNeeded,
             Section = formModel.Section,
@@ -92,6 +92,11 @@ public static class FixedAssetRequestMapper
     // 4. Update DTO → Entity (Mutates existing)
     public static void UpdateFrom(this FixedAssetRequest existing, UpdateFixedAssetRequestDto request)
     {
+        // (GUARD): Huwag patungan ng default date (0001-01-01) ang DateRequested kapag nag-e-edit. 
+        // Ang "Date Requested" ay petsa ng pagka-create, hindi dapat nagbabago.
+        if (request.DateRequested != default)
+            existing.DateRequested = request.DateRequested;
+
         existing.DateRequested = request.DateRequested;
         existing.Department = request.Department;
         existing.TargetDateNeeded = request.TargetDateNeeded;
