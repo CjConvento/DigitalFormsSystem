@@ -10,7 +10,7 @@ namespace DigitalFormsSystem.Core.Interfaces
         Task<List<DamagedReport>> GetUserReportsAsync(int employeeId);
         Task<DamagedReport?> GetReportWithDetailsAsync(int id, int employeeId);
         Task<bool> ReportExistsAsync(int id);
-        Task<DamagedReport?> GetReportForPrintAsync(int id);
+        Task<DamagedReport?> GetReportForPrintAsync(int id, int employeeId);
         Task<List<Employee>> GetEmployeesForDropdownAsync();
 
         // ============ WRITE (Now using DTOs, no path leakage) ============
