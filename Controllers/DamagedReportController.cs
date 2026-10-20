@@ -243,10 +243,12 @@ namespace DigitalFormsSystem.Controllers
         // ============ PRINT ============
         public async Task<IActionResult> Print(int id)
         {
+            var empId = _currentUserService.EmployeeId!.Value;
+
             if (!_currentUserService.IsAuthenticated)
                 return RedirectToAction("Login", "Account");
 
-            var report = await _service.GetReportForPrintAsync(id);
+            var report = await _service.GetReportForPrintAsync(id, empId);
             if (report == null) return NotFound();
 
             return View(report);
