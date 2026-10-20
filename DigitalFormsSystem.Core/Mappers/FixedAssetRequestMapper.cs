@@ -24,6 +24,8 @@ public static class FixedAssetRequestMapper
             RequestType = formModel.RequestType,
             ExistingUnitCount = formModel.ExistingUnitCount,
             ExistingUser = formModel.ExistingUser,
+            EvaluatedByName = formModel.EvaluatedByName, 
+            RequestedByName = formModel.RequestedByName, 
             DamagedReportNo = formModel.DamagedReportNo,
             ExistingUnits = existingUnits
         };
