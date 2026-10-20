@@ -72,72 +72,84 @@ namespace DigitalFormsSystem.Core.Services
             if (request.PartIImages != null) ValidateImages(request.PartIImages);
             if (request.PartIIImages != null) ValidateImages(request.PartIIImages);
 
-            // 2. Atomic Transaction: Report + Images succeed or fail together
-            await using var transaction = await _context.Database.BeginTransactionAsync();
-            try
+            // Wrap transaction in Execution Strategy to support Npgsql retries
+            var strategy = _context.Database.CreateExecutionStrategy();
+
+            return await strategy.ExecuteAsync(async () =>
             {
-                // DELEGATED TO MAPPER: for entity creation
-                var report = request.ToEntity(currentEmployeeId, GenerateControlNo());
+                // 2. Atomic Transaction: Report + Images succeed or fail together
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    // DELEGATED TO MAPPER: for entity creation
+                    var report = request.ToEntity(currentEmployeeId, GenerateControlNo());
 
-                _context.DamagedReports.Add(report);
-                await _context.SaveChangesAsync();
+                    _context.DamagedReports.Add(report);
+                    await _context.SaveChangesAsync();
 
-                await SaveImagesAsync(request.PartIImages, report.Id, "PartI");
-                await SaveImagesAsync(request.PartIIImages, report.Id, "PartII");
+                    await SaveImagesAsync(request.PartIImages, report.Id, "PartI");
+                    await SaveImagesAsync(request.PartIIImages, report.Id, "PartII");
 
-                await transaction.CommitAsync();
-                return report;
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw; // let the global exception middleware handle it
-            }
+                    await transaction.CommitAsync();
+                    return report;
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw; // let the global exception middleware handle it
+                }
+            });
         }
 
         // ============ UPDATE ============
         public async Task<bool> UpdateReportAsync(UpdateDamagedReportRequest request, int currentEmployeeId)
         {
-            await using var transaction = await _context.Database.BeginTransactionAsync();
-            try
+            // Wrap transaction in Execution Strategy to support Npgsql retries
+            var strategy = _context.Database.CreateExecutionStrategy();
+
+            return await strategy.ExecuteAsync(async () =>
             {
-                var existing = await _context.DamagedReports
-                    .Include(r => r.Images)
-                    .FirstOrDefaultAsync(r => r.Id == request.Id);
-
-                if (existing == null) throw new KeyNotFoundException("Report not found.");
-                if (existing.RequestStatus != "Draft") throw new InvalidOperationException("Only Draft reports can be updated.");
-
-                // Handle deletions
-                if (request.DeleteImageIds != null && request.DeleteImageIds.Any())
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+                try
                 {
-                    var imagesToDelete = existing.Images.Where(i => request.DeleteImageIds.Contains(i.Id)).ToList();
+                    var existing = await _context.DamagedReports
+                        .Include(r => r.Images)
+                        .FirstOrDefaultAsync(r => r.Id == request.Id);
 
-                    foreach (var img in imagesToDelete)
+                    if (existing == null) throw new KeyNotFoundException("Report not found.");
+                    if (existing.RequestStatus != "Draft") throw new InvalidOperationException("Only Draft reports can be updated.");
+
+                    // Handle deletions
+                    if (request.DeleteImageIds != null && request.DeleteImageIds.Any())
                     {
-                        await _storageService.DeleteAsync(img.StorageFileId);
-                        _context.DamagedReportImages.Remove(img);
+                        var imagesToDelete = existing.Images.Where(i => request.DeleteImageIds.Contains(i.Id)).ToList();
+
+                        foreach (var img in imagesToDelete)
+                        {
+                            await _storageService.DeleteAsync(img.StorageFileId);
+                            _context.DamagedReportImages.Remove(img);
+                        }
                     }
+
+                    // DELEGATED TO MAPPER: for property updates
+                    existing.UpdateFrom(request);
+                    await _context.SaveChangesAsync();
+
+                    // DELEGATED TO MAPPER: for FollowUp handling
+                    UpdateFollowUps(existing.Id, request.FollowUps);
+
+                    if (request.PartIImages != null) await SaveImagesAsync(request.PartIImages, existing.Id, "PartI");
+                    if (request.PartIIImages != null) await SaveImagesAsync(request.PartIIImages, existing.Id, "PartII");
+
+                    await transaction.CommitAsync();
+                    return true;
                 }
-
-                // DELEGATED TO MAPPER: for property updates
-                existing.UpdateFrom(request);
-                await _context.SaveChangesAsync();
-
-                // DELEGATED TO MAPPER: for FollowUp handling
-                UpdateFollowUps(existing.Id, request.FollowUps);
-
-                if (request.PartIImages != null) await SaveImagesAsync(request.PartIImages, existing.Id, "PartI");
-                if (request.PartIIImages != null) await SaveImagesAsync(request.PartIIImages, existing.Id, "PartII");
-
-                await transaction.CommitAsync();
-                return true;
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            });
         }
 
         // ============ DELETE ============
