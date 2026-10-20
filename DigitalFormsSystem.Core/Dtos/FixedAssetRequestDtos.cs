@@ -19,6 +19,9 @@ public class CreateFixedAssetRequestDto
     public int? ExistingUnitCount { get; set; }
     public string? ExistingUser { get; set; }
     public string? DamagedReportNo { get; set; }
+    public string? RequestedByName { get; set; }
+    public string? EvaluatedByName { get; set; }
+
 
     public List<ExistingUnitDetailDto>? ExistingUnits { get; set; }
 }
@@ -41,6 +44,8 @@ public class UpdateFixedAssetRequestDto
     public int? ExistingUnitCount { get; set; }
     public string? ExistingUser { get; set; }
     public string? DamagedReportNo { get; set; }
+    public string? RequestedByName { get; set; }
+    public string? EvaluatedByName { get; set; }
 
     public List<ExistingUnitDetailDto>? ExistingUnits { get; set; }
 }

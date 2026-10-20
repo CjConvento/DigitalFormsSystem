@@ -80,6 +80,10 @@ namespace DigitalFormsSystem.Core.Services
                     // DELEGATED TO MAPPER
                     var entity = request.ToEntity(currentEmployeeId, GenerateControlNo(currentEmployeeId));
 
+                    // SECURITY FIX: Fetch actual employee name from DB to prevent spoofing
+                    var employee = await _context.Employees.FindAsync(currentEmployeeId);
+                    entity.RequestedByName = employee?.Name;
+
                     _context.FixedAssetRequests.Add(entity);
                     await _context.SaveChangesAsync(); // Get entity.Id
 

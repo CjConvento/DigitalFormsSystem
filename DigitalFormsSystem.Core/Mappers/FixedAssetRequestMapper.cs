@@ -50,6 +50,8 @@ public static class FixedAssetRequestMapper
             ExistingUnitCount = formModel.ExistingUnitCount,
             ExistingUser = formModel.ExistingUser,
             DamagedReportNo = formModel.DamagedReportNo,
+            EvaluatedByName = formModel.EvaluatedByName, 
+            RequestedByName = formModel.RequestedByName, 
             ExistingUnits = existingUnits
         };
     }
@@ -60,7 +62,7 @@ public static class FixedAssetRequestMapper
         return new FixedAssetRequest
         {
             ControlNo = controlNo,
-            DateRequested = request.DateRequested,
+            DateRequested = request.DateRequested == default ? DateOnly.FromDateTime(DateTime.Now) : request.DateRequested, 
             Department = request.Department,
             TargetDateNeeded = request.TargetDateNeeded,
             Section = request.Section,
@@ -75,6 +77,8 @@ public static class FixedAssetRequestMapper
             ExistingUnitCount = request.ExistingUnitCount,
             ExistingUser = request.ExistingUser,
             DamagedReportNo = request.DamagedReportNo,
+            EvaluatedByName = request.EvaluatedByName, 
+            RequestedByName = request.RequestedByName, 
             RequestedByEmployeeId = employeeId,
             RequestStatus = "Draft",
             CreatedAt = DateTime.Now,
@@ -101,6 +105,8 @@ public static class FixedAssetRequestMapper
         existing.ExistingUnitCount = request.ExistingUnitCount;
         existing.ExistingUser = request.ExistingUser;
         existing.DamagedReportNo = request.DamagedReportNo;
+        existing.EvaluatedByName = request.EvaluatedByName; 
+        existing.RequestedByName = request.RequestedByName;
         existing.UpdatedAt = DateTime.Now;
     }
 
