@@ -1,28 +1,36 @@
+using DigitalFormsSystem.Core.Dtos;
 using DigitalFormsSystem.Core.Models;
 
 namespace DigitalFormsSystem.Core.Interfaces
 {
     public interface IFixedAssetRequestService
     {
-        // Read
+        // ========================
+        // READ 
+        // =======================
+
         Task<List<FixedAssetRequest>> GetUserRequestsAsync(int employeeId);
-        Task<FixedAssetRequest?> GetRequestWithDetailsAsync(int id);
+        Task<FixedAssetRequest?> GetRequestWithDetailsAsync(int id, int employeeId);
         Task<bool> RequestExistsAsync(int id);
 
+        // ========================
+        // WRITE
+        // ========================
+
         // Create
-        Task<FixedAssetRequest> CreateRequestAsync(FixedAssetRequest request, List<ExistingUnitDetail> existingUnits);
+        Task<FixedAssetRequest> CreateRequestAsync(CreateFixedAssetRequestDto request, int currentEmployeeId);
 
         // Update
-        Task<bool> UpdateRequestAsync(FixedAssetRequest updatedRequest, List<ExistingUnitDetail> parsedUnits);
+        Task<bool> UpdateRequestAsync(UpdateFixedAssetRequestDto request, int currentEmployeeId);
 
         // Delete
         Task<bool> DeleteRequestAsync(int id);
 
         // Print
-        Task<FixedAssetRequest?> GetRequestForPrintAsync(int id);
+        Task<FixedAssetRequest?> GetRequestForPrintAsync(int id, int employeeId);
         Task LogPrintActivityAsync(int requestId, int employeeId);
 
         // Helpers
-        string GenerateControlNo(int employeeId);
+        string GenerateControlNo(int employeeId, int retryCount);
     }
 }

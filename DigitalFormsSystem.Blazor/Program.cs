@@ -1,7 +1,5 @@
 using DigitalFormsSystem.Core.Interfaces;
 using DigitalFormsSystem.Core.Services;
-using DigitalFormsSystem.Services;
-using DigitalFormsSystem.Web.Services;
 using DigitalFormsSystem.Core.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,7 +11,7 @@ builder.Services.AddServerSideBlazor();
 
 // Register DbContext
 builder.Services.AddDbContext<DigitalFormsSystemContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Register Services
 builder.Services.AddScoped<ICurrentUserService, SessionCurrentUserService>();

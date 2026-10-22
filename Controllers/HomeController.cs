@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using DigitalFormsSystem.Core.Interfaces;
+using DigitalFormsSystem.Core.Models;      
+using System.Diagnostics;    
 
 namespace DigitalFormsSystem.Web.Controllers
 {
@@ -18,6 +20,15 @@ namespace DigitalFormsSystem.Web.Controllers
                 return RedirectToAction("Login", "Account");
 
             return View();
+        }
+
+        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+        public IActionResult Error()
+        {
+            return View(new ErrorViewModel
+            {
+                RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier
+            });
         }
     }
 }

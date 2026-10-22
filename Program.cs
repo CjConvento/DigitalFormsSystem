@@ -4,12 +4,12 @@
     using System.Threading;
     using DigitalFormsSystem.Data;  
     using QuestPDF.Infrastructure;
-    using DigitalFormsSystem.Services;      // For SessionCurrentUserService
-    using DigitalFormsSystem.Core.Services; // For FixedAssetRequestService
-    using DigitalFormsSystem.Web.Services;  // For DamagedReportService, NotificationService
-    using Microsoft.AspNetCore.Authentication.Cookies; 
+    using DigitalFormsSystem.Core.Services; // For AppwriteStorageService, NotificationService, SessionCurrentUserService, AuditService, FixedAssetRequestService, DamagedReportService      
+    using Microsoft.AspNetCore.Authentication.Cookies;
+    using Microsoft.AspNetCore.HttpOverrides; 
+    using DigitalFormsSystem.Middleware; // For GlobalExceptionMiddleware
 
-    namespace DigitalFormsSystem.Web
+    namespace DigitalFormsSystem
     {
         public class Program
         {
@@ -19,13 +19,28 @@
 
                 try
                 {
+                    Console.SetOut(TextWriter.Synchronized(new StreamWriter(Console.OpenStandardOutput()) { AutoFlush = true }));
+                    
                     var builder = WebApplication.CreateBuilder(args);
 
+                    // ✅ Kestrel — allow large request bodies (default 30 MB)
+                    builder.WebHost.ConfigureKestrel(options =>
+                    {
+                        options.Limits.MaxRequestBodySize = 100L * 1024 * 1024;  // 100 MB
+                    });
+
+                    // ✅ Form options — allow large multipart form uploads
+                    builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+                    {
+                        options.MultipartBodyLengthLimit = 100L * 1024 * 1024;  // 100 MB
+                    });
+
                     builder.Services.AddControllersWithViews();
+
                     builder.Services.AddDbContext<DigitalFormsSystemContext>(options =>
                     options.UseSqlServer(
                         builder.Configuration.GetConnectionString("DefaultConnection"),
-                        sqlOptions => sqlOptions.EnableRetryOnFailure(
+                        sqlServer => sqlServer.EnableRetryOnFailure(
                             maxRetryCount: 5,
                             maxRetryDelay: TimeSpan.FromSeconds(10),
                             errorNumbersToAdd: null)));
@@ -51,11 +66,15 @@
                     });
 
                     builder.Services.AddHttpContextAccessor();
-                    builder.Services.AddScoped<ICurrentUserService, SessionCurrentUserService>();
+                    builder.Services.AddScoped<ICurrentUserService, SessionCurrentUserService>(); 
+
                     builder.Services.AddScoped<IFixedAssetRequestService, FixedAssetRequestService>();
                     builder.Services.AddScoped<IDamagedReportService, DamagedReportService>();
+
                     builder.Services.AddScoped<INotificationService, NotificationService>();
                     builder.Services.AddScoped<IAuditService, AuditService>();  
+                    builder.Services.AddScoped<IStorageService, LocalStorageService>();
+                    builder.Services.AddScoped<IAccountService, AccountService>();
 
                     var app = builder.Build();
 
@@ -63,13 +82,22 @@
 
                     if (!app.Environment.IsDevelopment())
                     {
-                        app.UseExceptionHandler("/Home/Error");
+                        // app.UseExceptionHandler("/Home/Error"); // middleware handles exceptions globally
                         app.UseHsts();
                     }
+
+                    // ✅ Must be BEFORE UseHttpsRedirection (Render / reverse proxies)
+                    app.UseForwardedHeaders(new ForwardedHeadersOptions
+                    {
+                        ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+                    });
 
                     app.UseHttpsRedirection();
                     app.UseStaticFiles();
                     app.UseRouting();
+
+                    // Global Exception Handling Middleware
+                    app.UseMiddleware<GlobalExceptionMiddleware>(); 
 
                     // ✅ ORDER IS IMPORTANT: Authentication BEFORE Authorization
                     app.UseSession();
@@ -80,38 +108,21 @@
                         name: "default",
                         pattern: "{controller=FixedAsset}/{action=Index}/{id?}");
 
-                    if (!IsDesignTime())
-                    {
                         // ⭐ SEED EMPLOYEE PASSWORDS
                         using (var scope = app.Services.CreateScope())
                         {
                             var context = scope.ServiceProvider.GetRequiredService<DigitalFormsSystemContext>();
                             await DbInitializer.SeedEmployeePasswords(context);
                         }   
-                    }
 
                     app.Run();
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine("===== FATAL EXCEPTION =====");
-                    Console.WriteLine(ex.ToString());
+                    Console.Error.WriteLine("FATAL: Application startup failed.");
+                    Console.Error.WriteLine($"Exception type: {ex.GetType().Name}");
                     throw;
                 }
-            }
-
-            // ✅ Helper method to check if running in design-time (migrations)
-            private static bool IsDesignTime()
-            {
-                // Check for design-time environment
-                var designTime = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true";
-                
-                // Or check command line args
-                var args = Environment.GetCommandLineArgs();
-                if (args.Any(a => a.Contains("ef") || a.Contains("migrations")))
-                    return true;
-
-                return false;
             }
         }
     }

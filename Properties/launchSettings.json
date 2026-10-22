@@ -1,5 +1,5 @@
 ﻿{
-  "$schema": "http://json.schemastore.org/launchsettings.json",
+  "$schema": "https://json.schemastore.org/launchsettings.json",
   "iisSettings": {
     "windowsAuthentication": false,
     "anonymousAuthentication": true,
@@ -24,7 +24,10 @@
       "launchBrowser": true,
       "applicationUrl": "https://0.0.0.0:7269;http://0.0.0.0:5280",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "StorageSettings__Provider": "AzureBlob",
+        "StorageSettings__ConnectionString": "YOUR_AZURE_CONNECTION_STRING",
+        "StorageSettings__ContainerName": "damaged-reports-img"
       }
     },
     "IIS Express": {

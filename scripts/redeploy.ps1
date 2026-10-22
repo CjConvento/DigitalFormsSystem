@@ -13,9 +13,12 @@ if (-not $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Adm
 # --- Load IIS management module ---
 Import-Module WebAdministration
 
-$appPoolName = "DigitalFormsSystemPool"
-$projectPath = "C:\DigitalFormsSystem\DigitalFormsSystem\DigitalFormsSystem.csproj"
-$outputPath  = "C:\inetpub\wwwroot\DigitalFormsSystem"
+# --- # Please specify your IIS application pool name: ---
+$appPoolName = "DFSApp"
+
+# --- # Please specify your native .NET C# project source path location: ---
+$projectPath = ".\DigitalFormsSystem.csproj" 
+$outputPath  = "C:\inetpub\wwwroot\DFSApp"
 
 Write-Host "Stopping App Pool: $appPoolName ..." -ForegroundColor Yellow
 Stop-WebAppPool -Name $appPoolName
@@ -29,4 +32,4 @@ dotnet publish $projectPath -c Release -o $outputPath
 Write-Host "Starting App Pool: $appPoolName ..." -ForegroundColor Yellow
 Start-WebAppPool -Name $appPoolName
 
-Write-Host "Done! Visit http://localhost:8080 to check." -ForegroundColor Green
+Write-Host "Done! Visit http://localhost:YOUR_PORT to check." -ForegroundColor Green

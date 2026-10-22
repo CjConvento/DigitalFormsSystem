@@ -1,0 +1,36 @@
+# Build artifacts
+**/bin/
+**/obj/
+**/out/
+
+# IDE
+.vs/
+.vscode/
+*.user
+*.suo
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Docs / configs
+README.md
+.github/
+scripts/
+
+# Tests
+DigitalFormsSystem.Tests/
+
+# Blazor (excluded from web build)
+DigitalFormsSystem.Blazor/
+
+# Local settings
+appsettings.Development.json
+
+# Local uploads
+wwwroot/uploads/
+
+# OS
+.DS_Store
+Thumbs.db

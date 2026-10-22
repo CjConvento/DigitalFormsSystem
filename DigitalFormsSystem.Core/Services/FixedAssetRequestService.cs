@@ -1,7 +1,10 @@
 using DigitalFormsSystem.Core.Interfaces;
 using DigitalFormsSystem.Core.Models;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration; 
+using DigitalFormsSystem.Core.Dtos;
+using DigitalFormsSystem.Core.Mappers;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace DigitalFormsSystem.Core.Services
 {
@@ -10,159 +13,154 @@ namespace DigitalFormsSystem.Core.Services
         private readonly DigitalFormsSystemContext _context;
         private readonly INotificationService _notificationService;
         private readonly IAuditService _auditService;
+        private readonly ILogger<FixedAssetRequestService> _logger;
         private readonly int _managerId;
 
         public FixedAssetRequestService(
-            DigitalFormsSystemContext context, 
+            DigitalFormsSystemContext context,
             INotificationService notificationService,
             IAuditService auditService,
+            ILogger<FixedAssetRequestService> logger,
             IConfiguration configuration)
         {
             _context = context;
             _notificationService = notificationService;
             _auditService = auditService;
+            _logger = logger;
             _managerId = configuration.GetValue<int>("AppSettings:ManagerEmployeeId");
 
             // FOR LOGGING
-            Console.WriteLine($"🔍 ManagerId loaded: {_managerId}");
+            _logger.LogDebug("🔍 ManagerId loaded: {ManagerId}", _managerId);
         }
 
         // ============ READ ============
         public async Task<List<FixedAssetRequest>> GetUserRequestsAsync(int employeeId)
         {
-            Console.WriteLine($"🔍 GetUserRequestsAsync called with employeeId: {employeeId}");
-            Console.WriteLine($"🔍 _managerId is: {_managerId}");
+            var query = _context.FixedAssetRequests.AsQueryable();
 
-            if (employeeId == _managerId)
+            // RBAC: If the user is not the manager, filter to only their own requests
+            if (employeeId != _managerId)
             {
-                Console.WriteLine("✅ Manager detected!");
-                var allRequests = await _context.FixedAssetRequests.ToListAsync();
-                Console.WriteLine($"📊 Total requests found: {allRequests.Count}");
-                return allRequests;
+                query = query.Where(r => r.RequestedByEmployeeId == employeeId);
             }
-            else
-            {
-                Console.WriteLine("❌ Not manager. Returning only user's requests.");
-                return await _context.FixedAssetRequests
-                    .Where(r => r.RequestedByEmployeeId == employeeId)
-                    .Include(r => r.RequestedByEmployee)
-                    .OrderByDescending(r => r.DateRequested)
-                    .ToListAsync();
-            }
+            return await query.Include(r => r.RequestedByEmployee).OrderByDescending(r => r.DateRequested).ToListAsync();
         }
 
-        public async Task<FixedAssetRequest?> GetRequestWithDetailsAsync(int id)
+        public async Task<FixedAssetRequest?> GetRequestWithDetailsAsync(int id, int employeeId)
         {
-            return await _context.FixedAssetRequests
+            var query = _context.FixedAssetRequests.AsQueryable();
+
+            // SECURITY CHECK: If NOT admin, they can only fetch their own request
+            if (employeeId != _managerId)
+            {
+                query = query.Where(r => r.RequestedByEmployeeId == employeeId);
+            }
+
+            return await query
                 .Include(r => r.RequestedByEmployee)
                 .Include(r => r.EvaluatedByEmployee)
                 .Include(r => r.ExistingUnitDetails)
                 .FirstOrDefaultAsync(r => r.Id == id);
         }
 
-        public async Task<bool> RequestExistsAsync(int id)
-        {
-            return await _context.FixedAssetRequests.AnyAsync(e => e.Id == id);
-        }
+        public async Task<bool> RequestExistsAsync(int id) => await _context.FixedAssetRequests.AnyAsync(e => e.Id == id);
 
         // ============ CREATE ============
-        public async Task<FixedAssetRequest> CreateRequestAsync(FixedAssetRequest request, List<ExistingUnitDetail> existingUnits)
+        public async Task<FixedAssetRequest> CreateRequestAsync(CreateFixedAssetRequestDto request, int currentEmployeeId)
         {
-            // Set default values
-            request.CreatedAt = DateTime.Now;
-            request.UpdatedAt = DateTime.Now;
-            request.RequestStatus = "Draft";
-            request.RequestedAt = DateTime.Now;
-            request.DateRequested = DateOnly.FromDateTime(DateTime.Now);
+            // Wrap transaction in Execution Strategy to support Npgsql retries
+            var strategy = _context.Database.CreateExecutionStrategy();
 
-            // Generate ControlNo with retry logic (max 3 attempts)
-            int maxRetries = 3;
-            for (int attempt = 1; attempt <= maxRetries; attempt++)
+            return await strategy.ExecuteAsync(async () =>
             {
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+
                 try
                 {
-                    request.ControlNo = GenerateControlNo(request.RequestedByEmployeeId);
-                    _context.FixedAssetRequests.Add(request);
-                    await _context.SaveChangesAsync();
+                    // DELEGATED TO MAPPER
+                    var entity = request.ToEntity(currentEmployeeId, GenerateControlNo(currentEmployeeId));
 
-                    // After save
-                    await _notificationService.NotifyStatusChangeAsync(
-                        request.Id, 
-                        "Draft", 
-                        "Draft", 
-                        request.RequestedByEmployeeId);
+                    // SECURITY FIX: Fetch actual employee name from DB to prevent spoofing
+                    var employee = await _context.Employees.FindAsync(currentEmployeeId);
+                    entity.RequestedByName = employee?.Name;
 
-                    // Save existing units if Additional
-                    if (request.RequestType == "Additional" && existingUnits.Any())
+                    _context.FixedAssetRequests.Add(entity);
+                    await _context.SaveChangesAsync(); // Get entity.Id
+
+                    // Handle nested ExistingUnitDetails inside the SAME transaction
+                    if (request.ExistingUnits != null && request.ExistingUnits.Any())
                     {
-                        foreach (var unit in existingUnits)
+                        int itemNo = 1;
+                        foreach (var dto in request.ExistingUnits)
                         {
-                            unit.FixedAssetRequestId = request.Id;
-                            _context.ExistingUnitDetails.Add(unit);
+                            _context.ExistingUnitDetails.Add(dto.ToEntity(entity.Id, itemNo++));
                         }
                         await _context.SaveChangesAsync();
                     }
 
-                    return request;
+                    await _notificationService.NotifyStatusChangeAsync(entity.Id, "Draft", "Draft", currentEmployeeId);
+                    await transaction.CommitAsync();
+
+                    return entity;
                 }
-                catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("UQ_FixedAssetRequests_ControlNo") == true)
+                catch
                 {
-                    if (attempt == maxRetries) throw;
-                    // Otherwise, retry with a new ControlNo (recursive call will generate new number)
+                    await transaction.RollbackAsync();
+                    throw; // Global Exception Middleware will handle it
                 }
-            }
-            throw new Exception("Unable to create request after multiple attempts.");
+            });
         }
 
         // ============ UPDATE ============
-        public async Task<bool> UpdateRequestAsync(FixedAssetRequest updatedRequest, List<ExistingUnitDetail> parsedUnits)
+        public async Task<bool> UpdateRequestAsync(UpdateFixedAssetRequestDto request, int currentEmployeeId)
         {
-            var existing = await _context.FixedAssetRequests
-                .Include(r => r.ExistingUnitDetails)
-                .FirstOrDefaultAsync(r => r.Id == updatedRequest.Id);
+            // Wrap transaction in Execution Strategy to support Npgsql retries
+            var strategy = _context.Database.CreateExecutionStrategy();
 
-            if (existing == null) return false;
-
-            // Update scalar fields
-            existing.Department = updatedRequest.Department;
-            existing.Section = updatedRequest.Section;
-            existing.TargetDateNeeded = updatedRequest.TargetDateNeeded;
-            existing.Quantity = updatedRequest.Quantity;
-            existing.AssetType = updatedRequest.AssetType;
-            existing.DetailedDescription = updatedRequest.DetailedDescription;
-            existing.ReasonPurpose = updatedRequest.ReasonPurpose;
-            existing.ProposedLocation = updatedRequest.ProposedLocation;
-            existing.EstimatedLifeSpan = updatedRequest.EstimatedLifeSpan;
-            existing.RequestType = updatedRequest.RequestType;
-            existing.DamagedReportNo = updatedRequest.DamagedReportNo;
-            existing.EvaluatedByName = updatedRequest.EvaluatedByName;
-            existing.UpdatedAt = DateTime.Now;
-
-            // Replace ExistingUnitDetails
-            _context.ExistingUnitDetails.RemoveRange(existing.ExistingUnitDetails);
-
-            if (existing.RequestType == "Additional" && parsedUnits.Any())
+            return await strategy.ExecuteAsync(async () =>
             {
-                foreach (var unit in parsedUnits)
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+                try
                 {
-                    unit.FixedAssetRequestId = existing.Id;
-                    _context.ExistingUnitDetails.Add(unit);
+                    var existing = await _context.FixedAssetRequests
+                        .Include(r => r.ExistingUnitDetails)
+                        .FirstOrDefaultAsync(r => r.Id == request.Id)
+                        ?? throw new KeyNotFoundException("Request not found.");
+
+                    if (existing.RequestStatus != "Draft")
+                        throw new InvalidOperationException("Only Draft requests can be updated.");
+
+                    // 1. Update main entity (DELEGATED TO MAPPER)
+                    existing.UpdateFrom(request);
+
+                    // 2. Handle Nested ExistingUnitDetails (Clear old, add new)
+                    _context.ExistingUnitDetails.RemoveRange(existing.ExistingUnitDetails);
+
+                    if (request.ExistingUnits != null && request.ExistingUnits.Any())
+                    {
+                        int itemNo = 1;
+                        foreach (var dto in request.ExistingUnits)
+                        {
+                            _context.ExistingUnitDetails.Add(dto.ToEntity(existing.Id, itemNo++));
+                        }
+                    }
+
+                    await _context.SaveChangesAsync();
+
+                    if (existing.RequestStatus != request.RequestType) // Simplified status check
+                    {
+                        await _notificationService.NotifyStatusChangeAsync(existing.Id, existing.RequestStatus ?? "Unknown", existing.RequestStatus ?? "Unknown", currentEmployeeId);
+                    }
+
+                    await transaction.CommitAsync();
+                    return true;
                 }
-            }
-
-            await _context.SaveChangesAsync();
-
-            // After update, check if status changed
-            if (existing.RequestStatus != updatedRequest.RequestStatus)
-            {
-                await _notificationService.NotifyStatusChangeAsync(
-                    existing.Id,
-                    existing.RequestStatus ?? "Unknown",   
-                    updatedRequest.RequestStatus ?? "Unknown",  
-                    existing.RequestedByEmployeeId);
-            }
-
-            return true;
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            });
         }
 
         // ============ DELETE ============
@@ -177,6 +175,8 @@ namespace DigitalFormsSystem.Core.Services
                 .FirstOrDefaultAsync(r => r.Id == id);
 
             if (request == null) return false;
+            if (request.RequestStatus != "Draft")
+                throw new InvalidOperationException("Only Draft requests can be deleted.");
 
             // Remove child records
             _context.ExistingUnitDetails.RemoveRange(request.ExistingUnitDetails ?? new List<ExistingUnitDetail>());
@@ -191,9 +191,17 @@ namespace DigitalFormsSystem.Core.Services
         }
 
         // ============ PRINT ============
-        public async Task<FixedAssetRequest?> GetRequestForPrintAsync(int id)
+        public async Task<FixedAssetRequest?> GetRequestForPrintAsync(int id, int employeeId)
         {
-            return await _context.FixedAssetRequests
+            var query = _context.FixedAssetRequests.AsQueryable();
+
+            // SECURITY CHECK: If NOT admin, they can only fetch their own request for printing
+            if (employeeId != _managerId)
+            {
+                query = query.Where(r => r.RequestedByEmployeeId == employeeId);
+            }
+
+            return await query
                 .Include(r => r.RequestedByEmployee)
                 .Include(r => r.EvaluatedByEmployee)
                 .Include(r => r.ExistingUnitDetails)
@@ -204,19 +212,31 @@ namespace DigitalFormsSystem.Core.Services
         {
             try
             {
-                await _context.Database.ExecuteSqlRawAsync(
-                    "EXEC sp_PrintFixedAssetRequest @RequestID={0}, @PrintedByEmployeeID={1}",
-                    requestId, employeeId);
+                var log = new FixedAssetPrintLog
+                {
+                    FixedAssetRequestId = requestId,
+                    PrintedByEmployeeId = employeeId,
+                    PrintDateTime = DateTime.Now,
+                    PrintFormat = "Full Form"
+                };
+                _context.FixedAssetPrintLogs.Add(log);
+                await _context.SaveChangesAsync();
+
+                _logger.LogDebug("Print activity logged for request {RequestId}", requestId);
             }
-            catch
+            catch (Exception ex)
             {
-                // Ignore logging errors – print activity is non-critical
+                _logger.LogWarning("Failed to log print activity for request {RequestId}", requestId);
+                _logger.LogDebug(ex, "Print log exception details");
             }
         }
 
         // ============ HELPERS ============
-        public string GenerateControlNo(int employeeId)
+
+        public string GenerateControlNo(int employeeId, int retryCount = 0)
         {
+            if (retryCount > 5) throw new InvalidOperationException("Unable to generate unique control number after 5 attempts.");
+
             var employee = _context.Employees.Find(employeeId);
             string location = employee?.Location?.Trim() ?? "F1";
             string year = DateTime.Now.ToString("yy");
@@ -229,11 +249,11 @@ namespace DigitalFormsSystem.Core.Services
 
             int nextNumber = 1;
             if (lastRequest != null && lastRequest.ControlNo != null)
-{
-            string lastNumberStr = lastRequest.ControlNo.Substring(prefix.Length);
-            if (int.TryParse(lastNumberStr, out int lastNum))
-            nextNumber = lastNum + 1;
-}
+            {
+                string lastNumberStr = lastRequest.ControlNo.Substring(prefix.Length);
+                if (int.TryParse(lastNumberStr, out int lastNum))
+                    nextNumber = lastNum + 1;
+            }
 
             string newControlNo = $"{prefix}{nextNumber:D3}";
 
@@ -241,7 +261,7 @@ namespace DigitalFormsSystem.Core.Services
             bool alreadyExists = _context.FixedAssetRequests.Any(r => r.ControlNo == newControlNo);
             if (alreadyExists)
             {
-                return GenerateControlNo(employeeId); // recursive retry
+                return GenerateControlNo(employeeId, retryCount + 1); // recursive retry
             }
 
             return newControlNo;
